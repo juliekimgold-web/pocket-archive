@@ -272,6 +272,238 @@ function useOpenSourceMotion() {
   }, []);
 }
 
+function PhotorealWindowScene() {
+  const mountRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let cleanup: (() => void) | undefined;
+    let cancelled = false;
+
+    const buildScene = () => {
+      if (cancelled || !mountRef.current) return;
+      const T = (window as Window & { THREE?: any }).THREE;
+      if (!T) return;
+
+      const mount = mountRef.current;
+      const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const scene = new T.Scene();
+      const camera = new T.PerspectiveCamera(34, 1, 0.1, 40);
+      camera.position.set(0, 0, 5);
+
+      const renderer = new T.WebGLRenderer({
+        antialias: true,
+        alpha: true,
+        powerPreference: "high-performance",
+      });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.8));
+      renderer.setClearColor(0x102e26, 0);
+      if (T.SRGBColorSpace) renderer.outputColorSpace = T.SRGBColorSpace;
+      if (T.ACESFilmicToneMapping) renderer.toneMapping = T.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.03;
+      mount.appendChild(renderer.domElement);
+
+      const pointerTarget = new T.Vector2(0, 0);
+      const pointer = new T.Vector2(0, 0);
+      const uniforms = {
+        uMap: { value: null },
+        uTime: { value: 0 },
+        uPointer: { value: pointer },
+        uScroll: { value: 0 },
+        uReveal: { value: reducedMotion ? 1 : 0 },
+      };
+
+      const vertexShader = `
+        varying vec2 vUv;
+        uniform vec2 uPointer;
+        uniform float uReveal;
+        uniform float uScroll;
+        void main() {
+          vUv = uv;
+          vec3 p = position;
+          float curve = 1.0 - pow(abs(uv.x - 0.5) * 2.0, 2.0);
+          p.z += curve * 0.055;
+          p.x += uPointer.x * (uv.y - 0.5) * 0.06;
+          p.y += uPointer.y * (uv.x - 0.5) * 0.04 + uScroll * 0.025;
+          p *= mix(0.94, 1.0, uReveal);
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+        }
+      `;
+
+      const fragmentShader = `
+        precision highp float;
+        varying vec2 vUv;
+        uniform sampler2D uMap;
+        uniform vec2 uPointer;
+        uniform float uTime;
+        uniform float uScroll;
+        uniform float uReveal;
+
+        float hash(vec2 p) {
+          return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+        }
+
+        void main() {
+          vec2 uv = vUv;
+          vec3 probe = texture2D(uMap, uv).rgb;
+          float luma = dot(probe, vec3(0.299, 0.587, 0.114));
+          float foreground = smoothstep(0.22, 0.78, luma) * 0.55 + smoothstep(0.15, 0.92, 1.0 - uv.y) * 0.28;
+          vec2 parallax = uPointer * (0.004 + foreground * 0.0075);
+          parallax.y += uScroll * (foreground - 0.45) * 0.003;
+          uv = clamp(uv + parallax, 0.002, 0.998);
+
+          vec3 color = texture2D(uMap, uv).rgb;
+          float lampPulse = sin(uTime * 1.35) * 0.5 + 0.5;
+          float lampGlow = smoothstep(0.28, 0.0, distance(uv, vec2(0.711, 0.505)));
+          color += vec3(1.0, 0.49, 0.14) * lampGlow * (0.025 + lampPulse * 0.018);
+
+          float sweepPosition = fract(uTime * 0.035) * 1.45 - 0.22;
+          float sweep = 1.0 - smoothstep(0.0, 0.075, abs((uv.x + uv.y * 0.14) - sweepPosition));
+          sweep *= smoothstep(0.28, 0.7, uv.y) * 0.075;
+          color += vec3(0.95, 0.87, 0.7) * sweep;
+
+          float grain = hash(gl_FragCoord.xy + uTime * 31.0) - 0.5;
+          color += grain * 0.018;
+          float vignette = smoothstep(0.88, 0.22, distance(vUv, vec2(0.5)));
+          color *= 0.9 + vignette * 0.12;
+          color *= mix(0.8, 1.0, uReveal);
+          gl_FragColor = vec4(color, 1.0);
+        }
+      `;
+
+      const geometry = new T.PlaneGeometry(1, 1, 72, 36);
+      const material = new T.ShaderMaterial({ uniforms, vertexShader, fragmentShader });
+      const imagePlane = new T.Mesh(geometry, material);
+      scene.add(imagePlane);
+
+      const dustGeometry = new T.BufferGeometry();
+      const count = window.innerWidth < 700 ? 70 : 150;
+      const positions = new Float32Array(count * 3);
+      for (let i = 0; i < count; i += 1) {
+        positions[i * 3] = (Math.random() - 0.5) * 7;
+        positions[i * 3 + 1] = (Math.random() - 0.5) * 3.8;
+        positions[i * 3 + 2] = 0.2 + Math.random() * 1.2;
+      }
+      dustGeometry.setAttribute("position", new T.BufferAttribute(positions, 3));
+      const dustMaterial = new T.PointsMaterial({
+        color: 0xffd69a,
+        size: 0.018,
+        transparent: true,
+        opacity: 0.42,
+        depthWrite: false,
+        blending: T.AdditiveBlending,
+      });
+      const dust = new T.Points(dustGeometry, dustMaterial);
+      scene.add(dust);
+
+      let imageAspect = 2184 / 1005;
+      const texture = new T.TextureLoader().load(
+        "/og.png",
+        (loaded: any) => {
+          if (T.SRGBColorSpace) loaded.colorSpace = T.SRGBColorSpace;
+          loaded.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+          imageAspect = loaded.image.width / loaded.image.height;
+          uniforms.uMap.value = loaded;
+          resize();
+          mount.dataset.ready = "true";
+        },
+      );
+
+      const resize = () => {
+        const width = Math.max(mount.clientWidth, 1);
+        const height = Math.max(mount.clientHeight, 1);
+        camera.aspect = width / height;
+        camera.updateProjectionMatrix();
+        renderer.setSize(width, height, false);
+        const visibleHeight = 2 * Math.tan((camera.fov * Math.PI) / 360) * camera.position.z;
+        const visibleWidth = visibleHeight * camera.aspect;
+        if (camera.aspect > imageAspect) imagePlane.scale.set(visibleWidth, visibleWidth / imageAspect, 1);
+        else imagePlane.scale.set(visibleHeight * imageAspect, visibleHeight, 1);
+      };
+
+      const pointerMove = (event: PointerEvent) => {
+        const rect = mount.getBoundingClientRect();
+        pointerTarget.x = ((event.clientX - rect.left) / rect.width - 0.5) * 2;
+        pointerTarget.y = -((event.clientY - rect.top) / rect.height - 0.5) * 2;
+      };
+      const pointerLeave = () => pointerTarget.set(0, 0);
+      const scrollScene = () => {
+        const rect = mount.getBoundingClientRect();
+        uniforms.uScroll.value = Math.max(0, Math.min(1, -rect.top / Math.max(rect.height, 1)));
+      };
+
+      const observer = new ResizeObserver(resize);
+      observer.observe(mount);
+      mount.addEventListener("pointermove", pointerMove);
+      mount.addEventListener("pointerleave", pointerLeave);
+      window.addEventListener("scroll", scrollScene, { passive: true });
+      resize();
+      scrollScene();
+
+      let raf = 0;
+      const started = performance.now();
+      const render = () => {
+        const t = (performance.now() - started) / 1000;
+        uniforms.uTime.value = t;
+        if (!reducedMotion) {
+          pointer.lerp(pointerTarget, 0.042);
+          uniforms.uReveal.value += (1 - uniforms.uReveal.value) * 0.035;
+          dust.rotation.y = t * 0.012 + pointer.x * 0.04;
+          dust.position.y = Math.sin(t * 0.12) * 0.025;
+          camera.position.x += (pointer.x * 0.042 - camera.position.x) * 0.032;
+          camera.position.y += (pointer.y * 0.026 - camera.position.y) * 0.032;
+          camera.lookAt(0, 0, 0);
+        }
+        renderer.render(scene, camera);
+        raf = requestAnimationFrame(render);
+      };
+      render();
+
+      cleanup = () => {
+        cancelAnimationFrame(raf);
+        observer.disconnect();
+        mount.removeEventListener("pointermove", pointerMove);
+        mount.removeEventListener("pointerleave", pointerLeave);
+        window.removeEventListener("scroll", scrollScene);
+        geometry.dispose();
+        material.dispose();
+        dustGeometry.dispose();
+        dustMaterial.dispose();
+        texture.dispose();
+        renderer.dispose();
+        if (renderer.domElement.parentNode === mount) mount.removeChild(renderer.domElement);
+      };
+    };
+
+    if ((window as Window & { THREE?: any }).THREE) buildScene();
+    else {
+      const existing = document.querySelector<HTMLScriptElement>("script[data-three]");
+      if (existing) existing.addEventListener("load", buildScene, { once: true });
+      else {
+        const script = document.createElement("script");
+        script.src = "/vendor/three.min.js";
+        script.async = true;
+        script.dataset.three = "true";
+        script.addEventListener("load", buildScene, { once: true });
+        document.head.appendChild(script);
+      }
+    }
+
+    return () => {
+      cancelled = true;
+      cleanup?.();
+    };
+  }, []);
+
+  return (
+    <div
+      ref={mountRef}
+      className="photoreal-window"
+      role="img"
+      aria-label="햇살이 비치는 벽돌 건물 안에 빈티지 로봇, 테디베어, 문구와 장난감 기차가 진열된 포토리얼 쇼윈도"
+    />
+  );
+}
+
 function WindowScene() {
   const mountRef = useRef<HTMLDivElement>(null);
 
@@ -677,11 +909,11 @@ export default function Home() {
               </div>
             </div>
             <div className="scene-wrap">
-              <WindowScene />
+              <PhotorealWindowScene />
               <div className="window-reflection" aria-hidden="true" />
-              <span className="scene-note note-one">1960s<br />TIN ROBOT</span>
-              <span className="scene-note note-two">NEW<br />OLD STOCK</span>
-              <span className="scene-hint">마우스를 천천히 움직여보세요</span>
+              <a className="scene-note note-one" href="#new">1960s<br />TIN ROBOT</a>
+              <a className="scene-note note-two" href="#new">NEW<br />OLD STOCK</a>
+              <span className="scene-hint">PHOTOREAL DEPTH · MOVE CURSOR</span>
             </div>
           </div>
           <a className="scroll-note" href="#new">SCROLL TO BROWSE <span>↓</span></a>
