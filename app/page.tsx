@@ -116,6 +116,162 @@ const categories: Category[] = ["전체", "토이", "캐릭터", "문구", "리�
 
 const money = new Intl.NumberFormat("ko-KR");
 
+function useOpenSourceMotion() {
+  useEffect(() => {
+    let cancelled = false;
+    let observer: IntersectionObserver | undefined;
+    let removeMotion: (() => void) | undefined;
+
+    const startMotion = () => {
+      if (cancelled) return;
+      const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const progress = document.querySelector<HTMLElement>(".scroll-progress");
+      const updateProgress = () => {
+        if (!progress) return;
+        const scrollable = document.documentElement.scrollHeight - window.innerHeight;
+        const ratio = scrollable > 0 ? Math.min(1, window.scrollY / scrollable) : 0;
+        progress.style.transform = `scaleX(${ratio})`;
+      };
+      window.addEventListener("scroll", updateProgress, { passive: true });
+      updateProgress();
+
+      if (reducedMotion) {
+        document.querySelectorAll<HTMLElement>("[data-reveal]").forEach((element) => {
+          element.style.opacity = "1";
+          element.style.transform = "none";
+        });
+        removeMotion = () => window.removeEventListener("scroll", updateProgress);
+        return;
+      }
+
+      const animeApi = (window as Window & { anime?: any }).anime;
+      if (!animeApi) return;
+      const { animate, stagger } = animeApi;
+
+      animate(".announcement", {
+        opacity: { from: 0 },
+        y: { from: -14 },
+        duration: 700,
+        ease: "outExpo",
+      });
+      animate(".site-header", {
+        opacity: { from: 0 },
+        y: { from: -22 },
+        duration: 900,
+        delay: 120,
+        ease: "outExpo",
+      });
+      animate(".shop-sign", {
+        opacity: { from: 0 },
+        y: { from: -28 },
+        scale: { from: 0.97 },
+        duration: 1050,
+        delay: 180,
+        ease: "outExpo",
+      });
+      animate(".window-copy .eyebrow, .hero-line, .window-copy p, .hero-buttons", {
+        opacity: { from: 0 },
+        y: { from: 34 },
+        duration: 1000,
+        delay: stagger(105, { start: 260 }),
+        ease: "outExpo",
+      });
+      animate(".scene-wrap", {
+        opacity: { from: 0 },
+        scale: { from: 0.94 },
+        duration: 1300,
+        delay: 260,
+        ease: "outExpo",
+      });
+      animate(".scene-note", {
+        opacity: { from: 0 },
+        y: { from: 18 },
+        rotate: { from: -9 },
+        duration: 850,
+        delay: stagger(180, { start: 920 }),
+        ease: "outBack",
+      });
+      animate(".scroll-note", {
+        opacity: { from: 0 },
+        y: { from: 14 },
+        duration: 800,
+        delay: 1250,
+        ease: "outExpo",
+      });
+
+      const revealItems = Array.from(document.querySelectorAll<HTMLElement>("[data-reveal]"));
+      revealItems.forEach((element) => {
+        element.style.opacity = "0";
+        element.style.transform = "translateY(42px)";
+      });
+
+      observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (!entry.isIntersecting) return;
+            const element = entry.target as HTMLElement;
+            observer?.unobserve(element);
+            animate(element, {
+              opacity: 1,
+              y: 0,
+              duration: Number(element.dataset.duration || 980),
+              delay: Number(element.dataset.delay || 0),
+              ease: element.dataset.ease || "outExpo",
+            });
+          });
+        },
+        { rootMargin: "0px 0px -10% 0px", threshold: 0.08 },
+      );
+      revealItems.forEach((element) => observer?.observe(element));
+
+      const magneticElements = Array.from(document.querySelectorAll<HTMLElement>(".button, .checkout"));
+      const magneticCleanups = magneticElements.map((element) => {
+        const move = (event: PointerEvent) => {
+          if (event.pointerType === "touch") return;
+          const rect = element.getBoundingClientRect();
+          const x = (event.clientX - rect.left - rect.width / 2) * 0.13;
+          const y = (event.clientY - rect.top - rect.height / 2) * 0.16;
+          animate(element, { x, y, duration: 420, ease: "outExpo", composition: "replace" });
+        };
+        const leave = () => animate(element, { x: 0, y: 0, duration: 650, ease: "outElastic(1, .45)", composition: "replace" });
+        element.addEventListener("pointermove", move);
+        element.addEventListener("pointerleave", leave);
+        return () => {
+          element.removeEventListener("pointermove", move);
+          element.removeEventListener("pointerleave", leave);
+        };
+      });
+
+      removeMotion = () => {
+        observer?.disconnect();
+        magneticCleanups.forEach((cleanup) => cleanup());
+        window.removeEventListener("scroll", updateProgress);
+      };
+    };
+
+    if ((window as Window & { anime?: any }).anime) {
+      startMotion();
+    } else {
+      const existing = document.querySelector<HTMLScriptElement>("script[data-anime]");
+      if (existing) existing.addEventListener("load", startMotion, { once: true });
+      else {
+        const script = document.createElement("script");
+        script.src = "/vendor/anime.umd.min.js";
+        script.async = true;
+        script.dataset.anime = "true";
+        script.addEventListener("load", startMotion, { once: true });
+        document.head.appendChild(script);
+      }
+    }
+
+    return () => {
+      cancelled = true;
+      observer?.disconnect();
+      removeMotion?.();
+    };
+  }, []);
+}
+
 function WindowScene() {
   const mountRef = useRef<HTMLDivElement>(null);
 
@@ -265,8 +421,10 @@ function WindowScene() {
 
       let pointerX = 0;
       let pointerY = 0;
-      let raf = 0;
+      let scrollProgress = 0;
       const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      let revealProgress = reducedMotion ? 1 : 0;
+      let raf = 0;
 
       const resize = () => {
         const width = mount.clientWidth;
@@ -282,14 +440,27 @@ function WindowScene() {
         pointerY = ((event.clientY - rect.top) / rect.height - 0.5) * 0.16;
       };
 
+      const scrollScene = () => {
+        const rect = mount.getBoundingClientRect();
+        scrollProgress = Math.max(0, Math.min(1, -rect.top / Math.max(rect.height, 1)));
+      };
+
       const started = performance.now();
       const render = () => {
         const t = (performance.now() - started) / 1000;
+        revealProgress += (1 - revealProgress) * 0.035;
+        const revealEase = 1 - Math.pow(1 - revealProgress, 3);
+        camera.position.z = 10.6 - 2.1 * revealEase + scrollProgress * 0.5;
+        root.scale.setScalar(0.86 + revealEase * 0.14);
+        root.position.y = -0.14 * (1 - revealEase) + scrollProgress * 0.23;
         if (!reducedMotion) {
           root.rotation.y += (pointerX - root.rotation.y) * 0.035;
           root.rotation.x += (-pointerY - root.rotation.x) * 0.035;
           robot.position.y = -0.62 + Math.sin(t * 1.25) * 0.04;
           robot.rotation.y = 0.2 + Math.sin(t * 0.55) * 0.08;
+          robotHead.rotation.y = Math.sin(t * 0.72) * -0.11;
+          cup.rotation.z = Math.sin(t * 0.58) * 0.012;
+          train.position.x = 1.5 + Math.sin(t * 0.42) * 0.045;
           dust.rotation.y = t * 0.018;
           warm.intensity = 52 + Math.sin(t * 1.8) * 3;
         }
@@ -300,7 +471,9 @@ function WindowScene() {
       const observer = new ResizeObserver(resize);
       observer.observe(mount);
       mount.addEventListener("pointermove", pointerMove);
+      window.addEventListener("scroll", scrollScene, { passive: true });
       resize();
+      scrollScene();
       render();
       mount.dataset.ready = "true";
 
@@ -308,6 +481,7 @@ function WindowScene() {
         cancelAnimationFrame(raf);
         observer.disconnect();
         mount.removeEventListener("pointermove", pointerMove);
+        window.removeEventListener("scroll", scrollScene);
         renderer.dispose();
         dustGeo.dispose();
         if (renderer.domElement.parentNode === mount) mount.removeChild(renderer.domElement);
@@ -322,7 +496,7 @@ function WindowScene() {
         existing.addEventListener("load", buildScene, { once: true });
       } else {
         const script = document.createElement("script");
-        script.src = "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js";
+        script.src = "/vendor/three.min.js";
         script.async = true;
         script.dataset.three = "true";
         script.addEventListener("load", buildScene, { once: true });
@@ -352,15 +526,17 @@ function ProductCard({
   onFavorite,
   onAdd,
   onOpen,
+  index,
 }: {
   product: Product;
   favorite: boolean;
   onFavorite: () => void;
   onAdd: () => void;
   onOpen: () => void;
+  index: number;
 }) {
   return (
-    <article className="product-card">
+    <article className="product-card" data-reveal data-delay={Math.min(index * 65, 260)}>
       <div className="product-media">
         <button className="media-button" onClick={onOpen} aria-label={`${product.name} 상세 보기`}>
           <img
@@ -395,6 +571,7 @@ function ProductCard({
 }
 
 export default function Home() {
+  useOpenSourceMotion();
   const [category, setCategory] = useState<Category>("전체");
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -436,6 +613,7 @@ export default function Home() {
 
   return (
     <div className="site-shell">
+      <div className="scroll-progress" aria-hidden="true" />
       <div className="announcement">
         <span>매주 금요일 오후 8시, 새로운 오래된 물건이 도착합니다.</span>
         <span className="announcement-side">국내 7만원 이상 무료배송</span>
@@ -488,7 +666,7 @@ export default function Home() {
           <div className="hero-window">
             <div className="window-copy">
               <span className="eyebrow">A TINY SHOP OF OLD TREASURES</span>
-              <h1>Small things,<br /><i>old stories.</i></h1>
+              <h1><span className="hero-line">Small things,</span><span className="hero-line"><i>old stories.</i></span></h1>
               <p>
                 한때 누군가의 책상과 선반을 빛냈던 물건들.<br />
                 오래될수록 더 사랑스러운 작은 보물을 소개합니다.
@@ -510,7 +688,7 @@ export default function Home() {
         </section>
 
         <section className="products-section" id="new">
-          <div className="section-heading">
+          <div className="section-heading" data-reveal>
             <div>
               <span className="eyebrow green">JUST ARRIVED</span>
               <h2>오늘 들어온 물건</h2>
@@ -533,7 +711,7 @@ export default function Home() {
 
           {visibleProducts.length > 0 ? (
             <div className="product-grid">
-              {visibleProducts.map((product) => (
+              {visibleProducts.map((product, index) => (
                 <ProductCard
                   key={product.id}
                   product={product}
@@ -541,6 +719,7 @@ export default function Home() {
                   onFavorite={() => toggleFavorite(product.id)}
                   onAdd={() => addToCart(product.id)}
                   onOpen={() => setSelected(product)}
+                  index={index}
                 />
               ))}
             </div>
@@ -550,7 +729,7 @@ export default function Home() {
         </section>
 
         <section className="collections" id="collections">
-          <div className="section-heading compact">
+          <div className="section-heading compact" data-reveal>
             <div>
               <span className="eyebrow cream">BROWSE THE CABINETS</span>
               <h2>어느 서랍부터 열어볼까요?</h2>
@@ -558,19 +737,19 @@ export default function Home() {
             <p>수집을 시작하기 좋은 네 가지 선반을 준비했습니다.</p>
           </div>
           <div className="collection-grid">
-            <button className="collection-card tall" onClick={() => { setCategory("캐릭터"); location.hash = "new"; }}>
+            <button className="collection-card tall" data-reveal data-duration="1150" onClick={() => { setCategory("캐릭터"); location.hash = "new"; }}>
               <img src="/references/character-glass.png" alt="빈티지 캐릭터 유리잔" />
               <span className="collection-number">01</span>
               <span className="collection-title">Character<br /><i>Goods</i></span>
               <span className="collection-link">컵, 인형과 작은 기념품 →</span>
             </button>
-            <button className="collection-card" onClick={() => { setCategory("문구"); location.hash = "new"; }}>
+            <button className="collection-card" data-reveal data-delay="90" data-duration="1150" onClick={() => { setCategory("문구"); location.hash = "new"; }}>
               <img src="/references/stationery-desk.png" alt="오래된 노트와 문구가 놓인 책상" />
               <span className="collection-number">02</span>
               <span className="collection-title">Paper &amp;<br /><i>Stationery</i></span>
               <span className="collection-link">쓰고 간직하는 물건 →</span>
             </button>
-            <button className="collection-card" onClick={() => { setCategory("토이"); location.hash = "new"; }}>
+            <button className="collection-card" data-reveal data-delay="160" data-duration="1150" onClick={() => { setCategory("토이"); location.hash = "new"; }}>
               <img src="/references/shop-interior.png" alt="인형과 장난감으로 가득한 빈티지 숍" />
               <span className="collection-number">03</span>
               <span className="collection-title">Toys &amp;<br /><i>Friends</i></span>
@@ -580,11 +759,11 @@ export default function Home() {
         </section>
 
         <section className="editorial" id="story">
-          <div className="editorial-photo">
+          <div className="editorial-photo" data-reveal data-duration="1200">
             <img src="/references/storefront-day.png" alt="햇살이 비치는 벽돌 건물의 작은 빈티지 숍" />
             <span className="photo-caption">A little shop, somewhere familiar.</span>
           </div>
-          <div className="editorial-copy">
+          <div className="editorial-copy" data-reveal data-delay="100">
             <span className="eyebrow green">THE SHOPKEEPER&apos;S NOTE</span>
             <h2>낡았다는 건,<br />그만큼 오래 사랑받았다는 것.</h2>
             <p>
@@ -601,24 +780,24 @@ export default function Home() {
         </section>
 
         <section className="journal" id="journal">
-          <div className="journal-title">
+          <div className="journal-title" data-reveal>
             <span className="eyebrow">FROM THE JOURNAL · ISSUE 08</span>
             <h2>책상 위 작은 박물관</h2>
             <p>오래된 클립과 노트, 연필 한 자루로 시작하는 빈티지 문구 수집 안내서.</p>
             <a href="#new" className="button light">이야기 읽기</a>
           </div>
-          <div className="journal-image">
+          <div className="journal-image" data-reveal data-delay="120" data-duration="1200">
             <img src="/references/stationery-desk.png" alt="빈티지 문구로 꾸민 나무 책상" />
             <span>STATIONERY<br />COLLECTOR&apos;S GUIDE</span>
           </div>
         </section>
 
         <section className="newsletter">
-          <div>
+          <div data-reveal>
             <span className="eyebrow green">FRIDAY, 8 PM</span>
             <h2>새로운 오래된 물건이<br />도착하면 알려드릴게요.</h2>
           </div>
-          <form onSubmit={(event) => event.preventDefault()}>
+          <form data-reveal data-delay="100" onSubmit={(event) => event.preventDefault()}>
             <label htmlFor="email">입고 소식을 받을 이메일</label>
             <div>
               <input id="email" type="email" placeholder="hello@example.com" required />
@@ -636,7 +815,7 @@ export default function Home() {
           <div><b>HELP</b><a href="#story">배송과 포장</a><a href="#story">상태 등급 안내</a><a href="#story">문의하기</a></div>
           <div><b>VISIT</b><span>서울시 성동구 작은 골목 17</span><span>WED–SUN · 12–19</span><span>@pocket.archive</span></div>
         </div>
-        <div className="footer-bottom"><span>© 2026 POCKET ARCHIVE</span><span>OLD THINGS, NEW STORIES.</span></div>
+        <div className="footer-bottom"><span>© 2026 POCKET ARCHIVE</span><a href="https://github.com/juliangarnier/anime" target="_blank" rel="noreferrer">ANIME.JS + THREE.JS · MIT</a><span>OLD THINGS, NEW STORIES.</span></div>
       </footer>
 
       {cartOpen && (
