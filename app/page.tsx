@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import AuthAccountButton from "./auth-account-button";
 import KakaoAddressSearch, { type DeliveryAddress } from "./kakao-address-search";
+import { getSupabaseBrowserClient } from "./supabase-client";
 import TossPayment from "./toss-payment";
 
 type Category = "전체" | "토이" | "캐릭터" | "문구" | "리빙" | "빈티지 식기";
@@ -23,6 +24,14 @@ type Product = {
 };
 
 type ReviewFilter = "all" | "photo" | "five";
+
+type CheckoutAddress = DeliveryAddress & {
+  id: number;
+  label: string;
+  recipient: string;
+  phone: string;
+  isDefault: boolean;
+};
 
 type Review = {
   id: string;
@@ -1074,6 +1083,7 @@ function ProductCard({
 
 export default function Home() {
   useOpenSourceMotion();
+  const supabase = useMemo(() => getSupabaseBrowserClient(), []);
   const [category, setCategory] = useState<Category>("전체");
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -1086,6 +1096,10 @@ export default function Home() {
   const [deliveryMemo, setDeliveryMemo] = useState("");
   const [orderReady, setOrderReady] = useState(false);
   const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddress>({ zonecode: "", address: "", detail: "", extra: "" });
+  const [savedAddresses, setSavedAddresses] = useState<CheckoutAddress[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null);
+  const [addressLoading, setAddressLoading] = useState(false);
+  const [addressNotice, setAddressNotice] = useState("");
   const [selected, setSelected] = useState<Product | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [reviewFilter, setReviewFilter] = useState<ReviewFilter>("all");
@@ -1133,6 +1147,55 @@ export default function Home() {
 
   const cartProducts = cart.map((id) => products.find((product) => product.id === id)).filter(Boolean) as Product[];
   const cartTotal = cartProducts.reduce((sum, product) => sum + product.price, 0);
+
+  const applySavedAddress = useCallback((item: CheckoutAddress) => {
+    setSelectedAddressId(item.id);
+    setRecipient(item.recipient);
+    setPhone(item.phone);
+    setDeliveryAddress({ zonecode: item.zonecode, address: item.address, detail: item.detail, extra: item.extra });
+    setOrderReady(false);
+  }, []);
+
+  const loadSavedAddresses = useCallback(async () => {
+    if (!supabase) return;
+    setAddressLoading(true);
+    setAddressNotice("");
+    const { data: sessionData } = await supabase.auth.getSession();
+    const user = sessionData.session?.user;
+    if (!user) {
+      setSavedAddresses([]);
+      setSelectedAddressId(null);
+      setAddressLoading(false);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("addresses")
+      .select("id, label, recipient, phone, zonecode, address, extra, detail, is_default")
+      .eq("user_id", user.id)
+      .order("is_default", { ascending: false })
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      setAddressNotice("저장된 배송지를 불러오지 못했습니다. 직접 입력할 수 있어요.");
+    } else {
+      const loaded = (data || []).map((item) => ({
+        id: Number(item.id),
+        label: String(item.label),
+        recipient: String(item.recipient),
+        phone: String(item.phone),
+        zonecode: String(item.zonecode),
+        address: String(item.address),
+        extra: String(item.extra || ""),
+        detail: String(item.detail),
+        isDefault: Boolean(item.is_default),
+      }));
+      setSavedAddresses(loaded);
+      const preferred = loaded.find((item) => item.isDefault) || loaded[0];
+      if (preferred) applySavedAddress(preferred);
+    }
+    setAddressLoading(false);
+  }, [applySavedAddress, supabase]);
 
   const toggleFavorite = (id: number) => {
     setFavorites((current) => {
@@ -1476,7 +1539,7 @@ export default function Home() {
                   ))}
                 </div>
                 <div className="cart-total"><span>합계</span><b>₩{money.format(cartTotal)}</b></div>
-                <button className="checkout" onClick={() => { setCartOpen(false); setCheckoutOpen(true); setOrderReady(false); }}>주문서 작성하기</button>
+                <button className="checkout" onClick={() => { setCartOpen(false); setCheckoutOpen(true); setOrderReady(false); void loadSavedAddresses(); }}>주문서 작성하기</button>
                 <small className="cart-help">모든 상품은 한 점만 보유하고 있어요. 결제 완료 시 재고가 확정됩니다.</small>
               </>
             )}
@@ -1524,6 +1587,28 @@ export default function Home() {
               </div>
             ) : (
               <>
+                {addressLoading && <p className="saved-address-notice" aria-live="polite">저장된 배송지를 불러오고 있어요.</p>}
+                {!addressLoading && savedAddresses.length > 0 && (
+                  <section className="checkout-address-book" aria-label="저장된 배송지 선택">
+                    <div><span>MY ADDRESS BOOK</span><strong>저장된 배송지</strong></div>
+                    <div className="checkout-address-options">
+                      {savedAddresses.map((item) => (
+                        <button
+                          type="button"
+                          className={selectedAddressId === item.id ? "is-selected" : ""}
+                          aria-pressed={selectedAddressId === item.id}
+                          onClick={() => applySavedAddress(item)}
+                          key={item.id}
+                        >
+                          <span>{item.label}{item.isDefault && <em>기본</em>}</span>
+                          <small>{item.recipient} · [{item.zonecode}] {item.address} {item.detail}</small>
+                        </button>
+                      ))}
+                    </div>
+                    <a href="/mypage#addresses">배송지 관리</a>
+                  </section>
+                )}
+                {addressNotice && <p className="saved-address-notice" role="status">{addressNotice}</p>}
                 <div className="recipient-grid">
                   <label>
                     <span>받는 분</span>
@@ -1546,7 +1631,7 @@ export default function Home() {
                 </label>
                 <div className="shipping-total"><span>{cartProducts.length}개의 빈티지 물건</span><b>₩{money.format(cartTotal)}</b></div>
                 <button className="checkout" type="submit" disabled={!deliveryAddress.zonecode}>배송지 확인하기</button>
-                <small className="kakao-notice">카카오 우편번호 서비스를 통해 주소를 검색합니다. 입력한 정보는 현재 주문서에만 사용됩니다.</small>
+                <small className="kakao-notice">마이페이지에 등록된 기본 배송지는 다음 주문에 자동으로 불러옵니다. 새 주소는 카카오 우편번호 서비스로 검색할 수 있어요.</small>
               </>
             )}
           </form>

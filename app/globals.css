@@ -387,6 +387,18 @@ footer { padding: 80px 5vw 22px; background: #173d32; color: #efe1c6; }
 .shipping-heading > span { color: var(--brick); font: 700 8px var(--font-sans); letter-spacing: .16em; }
 .shipping-heading h2 { margin: 8px 0 8px; font-family: var(--font-serif-ko); font-size: 38px; font-weight: 440; letter-spacing: -.035em; }
 .shipping-heading p { margin: 0; color: #75685b; font-size: 10px; }
+.checkout-address-book { position: relative; margin: -8px 0 22px; padding: 17px; border: 1px solid rgba(24,63,52,.22); background: rgba(24,63,52,.045); }
+.checkout-address-book > div:first-child { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+.checkout-address-book > div:first-child span { color: var(--brick); font: 700 7px var(--font-sans); letter-spacing: .12em; }
+.checkout-address-book > div:first-child strong { font-family: var(--font-serif-ko); font-size: 16px; font-weight: 600; }
+.checkout-address-options { display: grid; gap: 7px; }
+.checkout-address-options button { display: grid; gap: 5px; width: 100%; padding: 12px 13px; border: 1px solid rgba(59,49,39,.15); background: rgba(255,253,247,.78); cursor: pointer; color: var(--ink); text-align: left; }
+.checkout-address-options button.is-selected { border-color: var(--green); box-shadow: inset 3px 0 var(--green); background: rgba(24,63,52,.07); }
+.checkout-address-options button > span { display: flex; align-items: center; gap: 7px; font-size: 10px; font-weight: 700; }
+.checkout-address-options em { padding: 3px 6px; background: var(--green); color: #fff3dc; font-size: 7px; font-style: normal; }
+.checkout-address-options small { overflow: hidden; color: #786c60; font-size: 8px; line-height: 1.55; text-overflow: ellipsis; white-space: nowrap; }
+.checkout-address-book > a { display: block; width: max-content; margin: 10px 0 0 auto; color: var(--green); font-size: 8px; font-weight: 700; }
+.saved-address-notice { margin: -8px 0 18px; padding: 11px 13px; background: rgba(171,74,43,.07); color: #7d4d3f; font-size: 9px; line-height: 1.6; }
 .recipient-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; margin-bottom: 22px; }
 .recipient-grid label, .delivery-memo { display: flex; flex-direction: column; gap: 8px; }
 .recipient-grid span, .delivery-memo span, .kakao-address-fieldset label > span { color: #77695d; font-size: 9px; font-weight: 700; letter-spacing: .05em; }
