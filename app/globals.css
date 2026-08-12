@@ -201,9 +201,9 @@ img { display: block; max-width: 100%; }
 .sold-out-stamp { position: absolute; z-index: 3; left: 50%; top: 50%; min-width: 112px; padding: 13px 16px 11px; border: 2px solid rgba(249,238,214,.9); background: rgba(113,47,34,.88); color: #fff3dc; box-shadow: 0 8px 24px rgba(36,19,13,.25); font: 700 11px var(--font-sans); letter-spacing: .14em; text-align: center; transform: translate(-50%,-50%) rotate(-4deg); }
 .product-card.is-sold-out .product-media img { filter: saturate(.45) brightness(.78); }
 .product-card.is-sold-out:hover .product-media img { transform: none; }
-.favorite { position: absolute; z-index: 2; top: 10px; right: 10px; width: 34px; height: 34px; border: 0; border-radius: 50%; background: rgba(250, 247, 239, .92); cursor: pointer; font-family: var(--font-display); font-size: 20px; line-height: 1; transition: transform .35s cubic-bezier(.18,.9,.2,1), color .2s ease; }
-.favorite:hover { transform: scale(1.12) rotate(-7deg); }
-.favorite.is-active { color: var(--brick); }
+.favorite { position: absolute; z-index: 2; top: 10px; right: 10px; width: 34px; height: 34px; display: grid; place-items: center; padding: 0 0 1px; border: 1px solid rgba(255,255,255,.32); border-radius: 50%; background: var(--green); color: #fff; cursor: pointer; font-family: Arial, sans-serif; font-size: 19px; font-weight: 400; line-height: 1; text-align: center; box-shadow: 0 5px 13px rgba(23,61,50,.2); transition: transform .35s cubic-bezier(.18,.9,.2,1), color .2s ease, box-shadow .2s ease; }
+.favorite:hover { color: #f2d9d2; box-shadow: 0 7px 17px rgba(23,61,50,.3); transform: scale(1.12) rotate(-7deg); }
+.favorite.is-active { color: #e24f3f; box-shadow: 0 5px 13px rgba(23,61,50,.24); }
 .quick-add { position: absolute; z-index: 2; left: 12px; right: 12px; bottom: 12px; min-height: 40px; border: 0; background: rgba(23, 76, 60, .95); color: white; cursor: pointer; font-size: 10px; font-weight: 700; transform: translateY(58px); transition: transform .42s cubic-bezier(.16,.8,.2,1); }
 .quick-add:disabled { background: rgba(69,60,52,.9); cursor: not-allowed; }
 .product-card:hover .quick-add, .quick-add:focus-visible { transform: translateY(0); }
@@ -218,7 +218,7 @@ img { display: block; max-width: 100%; }
 
 .reviews-section { padding: 112px 5vw 125px; background: #eee4d2; }
 .reviews-head { max-width: 1440px; margin: 0 auto 48px; display: flex; align-items: flex-end; justify-content: space-between; gap: 45px; }
-.reviews-head h2 { margin: 0; font-family: var(--font-sans); font-size: clamp(42px, 5.2vw, 66px); font-style: normal; font-weight: 700; line-height: 1.05; letter-spacing: -.055em; }
+.reviews-head h2 { margin: 0; font-family: var(--font-serif-ko); font-size: clamp(39px, 5vw, 62px); font-style: normal; font-weight: 430; line-height: 1.14; letter-spacing: -.035em; }
 .reviews-intro { max-width: 480px; margin: 14px 0 0; color: #786b60; font-size: 11px; line-height: 1.75; }
 .review-score { min-width: 250px; display: flex; align-items: center; gap: 18px; padding: 22px 0 7px 24px; border-left: 1px solid var(--line); }
 .review-score > strong { font-family: var(--font-display); font-size: 58px; font-weight: 430; line-height: 1; }
@@ -536,7 +536,7 @@ footer { padding: 80px 5vw 22px; background: #173d32; color: #efe1c6; }
   .desktop-hint { display: none; }
   .touch-hint { display: inline; }
   .scene-action { display: none; }
-  .photoreal-window { touch-action: pan-y; background-position: center bottom; background-size: auto 142%; }
+  .photoreal-window { touch-action: pan-y; background-position: center 72%; background-size: auto 172%; }
   .scroll-note { margin-top: 14px; }
   .products-section { padding: 78px 16px 90px; }
   .section-heading { display: block; margin-bottom: 31px; }
@@ -552,7 +552,7 @@ footer { padding: 80px 5vw 22px; background: #173d32; color: #efe1c6; }
   .product-bottom { align-items: flex-start; flex-direction: column; gap: 5px; }
   .reviews-section { padding: 78px 16px 90px; }
   .reviews-head { display: block; margin-bottom: 32px; }
-  .reviews-head h2 { font-size: 43px; }
+  .reviews-head h2 { font-size: 39px; }
   .review-score { margin-top: 28px; padding: 18px 0 0; border-left: 0; border-top: 1px solid var(--line); }
   .review-toolbar { align-items: stretch; flex-direction: column; }
   .review-tabs { overflow-x: auto; }

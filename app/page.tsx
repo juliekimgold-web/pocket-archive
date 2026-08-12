@@ -613,7 +613,7 @@ function PhotorealWindowScene({
       const resize = () => {
         const width = Math.max(mount.clientWidth, 1);
         const height = Math.max(mount.clientHeight, 1);
-        if (window.innerWidth <= 760) uniforms.uCrop.value.set(0.24, 0.86, 0.0, 0.665);
+        if (window.innerWidth <= 760) uniforms.uCrop.value.set(0.275, 0.825, 0.13, 0.675);
         else uniforms.uCrop.value.set(0.18, 0.91, 0.11, 0.721);
         camera.aspect = width / height;
         camera.updateProjectionMatrix();
@@ -1080,7 +1080,7 @@ function ProductCard({
           aria-label={favorite ? `${product.name} 찜 해제` : `${product.name} 찜하기`}
           aria-pressed={favorite}
         >
-          {favorite ? "♥" : "♡"}
+          ♥
         </button>
         <button className="quick-add" onClick={onAdd} disabled={product.soldOut}>
           {product.soldOut ? "품절된 상품입니다" : "장바구니 담기"}
@@ -1556,7 +1556,7 @@ export default function Home() {
             <span className="eyebrow">FROM THE JOURNAL · ISSUE 08</span>
             <h2>책상 위 작은 박물관</h2>
             <p>오래된 클립과 노트, 연필 한 자루로 시작하는 빈티지 문구 수집 안내서.</p>
-            <a href="#new" className="button light">이야기 읽기</a>
+            <a href="/journal/" className="button light">이야기 읽기</a>
           </div>
           <div className="journal-image" data-reveal data-delay="120" data-duration="1200">
             <img src="/references/stationery-desk.png" alt="빈티지 문구로 꾸민 나무 책상" />
