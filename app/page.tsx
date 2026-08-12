@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { FormEvent } from "react";
+import AuthAccountButton from "./auth-account-button";
+import KakaoAddressSearch, { type DeliveryAddress } from "./kakao-address-search";
 
-type Category = "전체" | "토이" | "캐릭터" | "문구" | "리빙";
+type Category = "전체" | "토이" | "캐릭터" | "문구" | "리빙" | "빈티지 식기";
 
 type Product = {
   id: number;
@@ -15,6 +18,21 @@ type Product = {
   badge?: string;
   image: string;
   position?: string;
+  soldOut?: boolean;
+};
+
+type ReviewFilter = "all" | "photo" | "five";
+
+type Review = {
+  id: string;
+  productId: number;
+  author: string;
+  date: string;
+  rating: number;
+  text: string;
+  image: string;
+  position?: string;
+  helpful: number;
 };
 
 const products: Product[] = [
@@ -27,20 +45,21 @@ const products: Product[] = [
     price: 238000,
     condition: "Very Good",
     badge: "1점 입고",
-    image:
-      "https://images.unsplash.com/photo-1671490289904-f7b8e0da9e82?auto=format&fit=crop&w=1200&q=88",
+    image: "/products/atomic-robot-composition-v2.png",
+    position: "43% 50%",
   },
   {
     id: 2,
     name: "밤비 프린트 글라스",
     englishName: "Bambi Lemon Glass",
-    category: "캐릭터",
+    category: "빈티지 식기",
     year: "1980s · Korea",
     price: 42000,
     condition: "Excellent",
     badge: "미사용",
-    image: "/references/character-glass.png",
-    position: "27% 54%",
+    image: "/products/fawn-glass-composition-v2.png",
+    position: "56% 50%",
+    soldOut: true,
   },
   {
     id: 3,
@@ -50,8 +69,8 @@ const products: Product[] = [
     year: "1990s · USA",
     price: 36000,
     condition: "New Old Stock",
-    image: "/references/stationery-desk.png",
-    position: "54% 50%",
+    image: "/products/composition-desk-set-v2.png",
+    position: "50% 50%",
   },
   {
     id: 4,
@@ -62,8 +81,8 @@ const products: Product[] = [
     price: 54000,
     condition: "Very Good",
     badge: "에디터 픽",
-    image: "/references/shop-interior.png",
-    position: "12% 42%",
+    image: "/products/crochet-friends-composition-v2.png",
+    position: "50% 50%",
   },
   {
     id: 5,
@@ -73,20 +92,21 @@ const products: Product[] = [
     year: "1970s · England",
     price: 28000,
     condition: "Good",
-    image:
-      "https://www.poooliprint.com/cdn/shop/files/SKU-_-Edited_1a46ca0b-8928-44db-a5ef-7f4bfc70b80e.jpg?v=1730176805&width=800",
+    image: "/products/brass-memo-clip-composition-v2.png",
+    position: "62% 50%",
+    soldOut: true,
   },
   {
     id: 6,
     name: "스페이스 미키 보틀",
     englishName: "Space Character Bottle",
-    category: "리빙",
+    category: "빈티지 식기",
     year: "1987 · Korea",
     price: 68000,
     condition: "Excellent",
     badge: "희귀",
-    image: "/references/character-glass.png",
-    position: "57% 48%",
+    image: "/products/space-character-bottle-v2.png",
+    position: "42% 50%",
   },
   {
     id: 7,
@@ -96,8 +116,8 @@ const products: Product[] = [
     year: "1980s · Germany",
     price: 89000,
     condition: "Good",
-    image: "/references/shop-interior.png",
-    position: "73% 63%",
+    image: "/products/teddy-pair-composition-v2.png",
+    position: "44% 50%",
   },
   {
     id: 8,
@@ -107,12 +127,74 @@ const products: Product[] = [
     year: "1970–90s · Mixed",
     price: 18000,
     condition: "Very Good",
-    image: "/references/shop-interior.png",
-    position: "82% 25%",
+    image: "/products/retro-postcard-flatlay-v2.png",
+    position: "50% 50%",
   },
 ];
 
-const categories: Category[] = ["전체", "토이", "캐릭터", "문구", "리빙"];
+const categories: Category[] = ["전체", "토이", "캐릭터", "문구", "빈티지 식기", "리빙"];
+
+const seedReviews: Review[] = [
+  {
+    id: "review-1",
+    productId: 1,
+    author: "윤＊＊",
+    date: "2026.08.02",
+    rating: 5,
+    text: "태엽을 감았을 때 나는 작은 소리까지 너무 근사해요. 세월의 흔적이 사진보다 자연스럽고, 포장도 오래된 물건을 존중하는 느낌이라 좋았습니다.",
+    image: "/products/atomic-robot.png",
+    position: "50% 50%",
+    helpful: 18,
+  },
+  {
+    id: "review-2",
+    productId: 3,
+    author: "서＊＊",
+    date: "2026.07.26",
+    rating: 5,
+    text: "종이 색과 모서리의 사용감이 정말 예뻐요. 실제 상태를 상세하게 안내해 주셔서 안심하고 구매했습니다. 책상 위에 두니 분위기가 완전히 달라졌어요.",
+    image: "/products/composition-desk-set.png",
+    position: "50% 50%",
+    helpful: 12,
+  },
+  {
+    id: "review-3",
+    productId: 2,
+    author: "민＊＊",
+    date: "2026.07.18",
+    rating: 4,
+    text: "프린트 색감이 선명하게 남아 있고 작은 스크래치도 미리 본 사진과 같았어요. 지금은 품절이라 더 특별한 물건처럼 느껴집니다.",
+    image: "/products/fawn-glass.png",
+    position: "50% 50%",
+    helpful: 9,
+  },
+  {
+    id: "review-4",
+    productId: 7,
+    author: "한＊＊",
+    date: "2026.07.11",
+    rating: 5,
+    text: "표정과 털의 결이 제각각이라 정말 한 점뿐인 친구 같아요. 작은 사이즈라 선반 어디에 두어도 잘 어울립니다.",
+    image: "/products/teddy-pair.png",
+    position: "50% 50%",
+    helpful: 21,
+  },
+];
+
+const drawerCollections: Array<{
+  category: Exclude<Category, "전체">;
+  number: string;
+  title: string;
+  accent: string;
+  description: string;
+  image: string;
+  position?: string;
+}> = [
+  { category: "캐릭터", number: "01", title: "Character", accent: "Goods", description: "컵, 인형과 작은 기념품", image: "/products/crochet-friends.png", position: "50% 48%" },
+  { category: "문구", number: "02", title: "Paper &", accent: "Stationery", description: "쓰고 기록하고 간직하는 물건", image: "/products/composition-desk-set.png", position: "50% 52%" },
+  { category: "토이", number: "03", title: "Toys &", accent: "Friends", description: "오래된 놀이 친구들", image: "/products/atomic-robot.png", position: "50% 44%" },
+  { category: "빈티지 식기", number: "04", title: "Vintage", accent: "Tableware", description: "시간이 담긴 컵과 작은 식기", image: "/products/fawn-glass.png", position: "50% 50%" },
+];
 
 const money = new Intl.NumberFormat("ko-KR");
 
@@ -169,7 +251,7 @@ function useOpenSourceMotion() {
         delay: 180,
         ease: "outExpo",
       });
-      animate(".window-copy .eyebrow, .hero-line, .window-copy p, .hero-buttons", {
+      animate(".window-copy .scene-hint, .window-copy .eyebrow, .hero-line, .scene-action", {
         opacity: { from: 0 },
         y: { from: 34 },
         duration: 1000,
@@ -182,14 +264,6 @@ function useOpenSourceMotion() {
         duration: 1300,
         delay: 260,
         ease: "outExpo",
-      });
-      animate(".scene-note", {
-        opacity: { from: 0 },
-        y: { from: 18 },
-        rotate: { from: -9 },
-        duration: 850,
-        delay: stagger(180, { start: 920 }),
-        ease: "outBack",
       });
       animate(".scroll-note", {
         opacity: { from: 0 },
@@ -272,7 +346,11 @@ function useOpenSourceMotion() {
   }, []);
 }
 
-function PhotorealWindowScene() {
+function PhotorealWindowScene({
+  onSelectCategory,
+}: {
+  onSelectCategory: (category: Exclude<Category, "전체">) => void;
+}) {
   const mountRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -306,24 +384,24 @@ function PhotorealWindowScene() {
       const pointer = new T.Vector2(0, 0);
       const uniforms = {
         uMap: { value: null },
+        uMaskA: { value: null },
+        uMaskB: { value: null },
+        uMaskCup: { value: null },
         uTime: { value: 0 },
         uPointer: { value: pointer },
         uScroll: { value: 0 },
         uReveal: { value: reducedMotion ? 1 : 0 },
+        uHover: { value: 0 },
+        uHoverStrength: { value: 0 },
       };
 
       const vertexShader = `
         varying vec2 vUv;
-        uniform vec2 uPointer;
         uniform float uReveal;
         uniform float uScroll;
         void main() {
           vUv = uv;
           vec3 p = position;
-          float curve = 1.0 - pow(abs(uv.x - 0.5) * 2.0, 2.0);
-          p.z += curve * 0.055;
-          p.x += uPointer.x * (uv.y - 0.5) * 0.06;
-          p.y += uPointer.y * (uv.x - 0.5) * 0.04 + uScroll * 0.025;
           p *= mix(0.94, 1.0, uReveal);
           gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
         }
@@ -333,23 +411,67 @@ function PhotorealWindowScene() {
         precision highp float;
         varying vec2 vUv;
         uniform sampler2D uMap;
+        uniform sampler2D uMaskA;
+        uniform sampler2D uMaskB;
+        uniform sampler2D uMaskCup;
         uniform vec2 uPointer;
         uniform float uTime;
         uniform float uScroll;
         uniform float uReveal;
+        uniform float uHover;
+        uniform float uHoverStrength;
 
         float hash(vec2 p) {
           return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
         }
 
+        float objectMask(vec2 imageUv, float selected) {
+          vec4 maskA = texture2D(uMaskA, imageUv);
+          if (selected > 0.5 && selected < 1.5) return maskA.r;
+          if (selected > 1.5 && selected < 2.5) return maskA.g;
+          if (selected > 2.5 && selected < 3.5) return maskA.b;
+          if (selected > 3.5 && selected < 4.5) return texture2D(uMaskB, imageUv).r;
+          if (selected > 4.5 && selected < 5.5) return texture2D(uMaskB, imageUv).g;
+          if (selected > 5.5 && selected < 6.5) return texture2D(uMaskCup, imageUv).r;
+          return 0.0;
+        }
+
+        vec2 objectCenter(float selected) {
+          if (selected > 0.5 && selected < 1.5) return vec2(0.302, 0.33);
+          if (selected > 1.5 && selected < 2.5) return vec2(0.455, 0.23);
+          if (selected > 2.5 && selected < 3.5) return vec2(0.545, 0.22);
+          if (selected > 3.5 && selected < 4.5) return vec2(0.63, 0.22);
+          if (selected > 4.5 && selected < 5.5) return vec2(0.776, 0.18);
+          if (selected > 5.5 && selected < 6.5) return vec2(0.363, 0.22);
+          return vec2(0.5);
+        }
+
+        vec2 liftedObjectUv(vec2 outputUv) {
+          vec2 center = objectCenter(uHover);
+          float bob = (3.2 + sin(uTime * 2.2) * 1.4) / 941.0 * uHoverStrength;
+          float angle = uPointer.x * 0.038 * uHoverStrength;
+          float cosine = cos(-angle);
+          float sine = sin(-angle);
+          mat2 inverseRotation = mat2(cosine, -sine, sine, cosine);
+          vec2 local = outputUv - center - vec2(0.0, bob);
+          local.x /= 1.0 + uHoverStrength * 0.012;
+          local.x -= local.y * uPointer.x * 0.035 * uHoverStrength;
+          return center + inverseRotation * local;
+        }
+
+        float liftedObjectMask(vec2 outputUv) {
+          return objectMask(liftedObjectUv(outputUv), uHover);
+        }
+
         void main() {
-          vec2 uv = vUv;
+          vec2 uv = vec2(
+            mix(0.18, 0.91, vUv.x),
+            mix(0.11, 0.721, vUv.y)
+          );
           vec3 probe = texture2D(uMap, uv).rgb;
           float luma = dot(probe, vec3(0.299, 0.587, 0.114));
           float foreground = smoothstep(0.22, 0.78, luma) * 0.55 + smoothstep(0.15, 0.92, 1.0 - uv.y) * 0.28;
-          vec2 parallax = uPointer * (0.004 + foreground * 0.0075);
-          parallax.y += uScroll * (foreground - 0.45) * 0.003;
-          uv = clamp(uv + parallax, 0.002, 0.998);
+          uv = clamp(uv, vec2(0.18, 0.11), vec2(0.91, 0.721));
 
           vec3 color = texture2D(uMap, uv).rgb;
           float lampPulse = sin(uTime * 1.35) * 0.5 + 0.5;
@@ -365,6 +487,45 @@ function PhotorealWindowScene() {
           color += grain * 0.018;
           float vignette = smoothstep(0.88, 0.22, distance(vUv, vec2(0.5)));
           color *= 0.9 + vignette * 0.12;
+
+          vec2 pixel = vec2(1.0 / 1672.0, 1.0 / 941.0);
+          float baseObject = objectMask(uv, uHover);
+          vec2 liftedUv = liftedObjectUv(uv);
+          float objectFill = objectMask(liftedUv, uHover);
+          float roundedFill = objectFill;
+          float closeMask = max(
+            max(liftedObjectMask(uv + vec2(pixel.x * 1.5, 0.0)), liftedObjectMask(uv - vec2(pixel.x * 1.5, 0.0))),
+            max(liftedObjectMask(uv + vec2(0.0, pixel.y * 1.5)), liftedObjectMask(uv - vec2(0.0, pixel.y * 1.5)))
+          );
+          float diagonalMask = max(
+            max(liftedObjectMask(uv + pixel), liftedObjectMask(uv - pixel)),
+            max(liftedObjectMask(uv + vec2(pixel.x, -pixel.y)), liftedObjectMask(uv + vec2(-pixel.x, pixel.y)))
+          );
+          float softMask = (
+            liftedObjectMask(uv + vec2(pixel.x * 8.0, 0.0)) + liftedObjectMask(uv - vec2(pixel.x * 8.0, 0.0)) +
+            liftedObjectMask(uv + vec2(0.0, pixel.y * 8.0)) + liftedObjectMask(uv - vec2(0.0, pixel.y * 8.0)) +
+            liftedObjectMask(uv + pixel * 5.5) + liftedObjectMask(uv - pixel * 5.5) +
+            liftedObjectMask(uv + vec2(pixel.x, -pixel.y) * 5.5) + liftedObjectMask(uv + vec2(-pixel.x, pixel.y) * 5.5)
+          ) * 0.125;
+          float wideMask = (
+            liftedObjectMask(uv + vec2(pixel.x * 20.0, 0.0)) + liftedObjectMask(uv - vec2(pixel.x * 20.0, 0.0)) +
+            liftedObjectMask(uv + vec2(0.0, pixel.y * 20.0)) + liftedObjectMask(uv - vec2(0.0, pixel.y * 20.0)) +
+            liftedObjectMask(uv + pixel * 14.0) + liftedObjectMask(uv - pixel * 14.0) +
+            liftedObjectMask(uv + vec2(pixel.x, -pixel.y) * 14.0) + liftedObjectMask(uv + vec2(-pixel.x, pixel.y) * 14.0)
+          ) * 0.125;
+          float silhouetteOutline = smoothstep(0.08, 0.72, clamp(max(closeMask, diagonalMask) - roundedFill, 0.0, 1.0));
+          float softGlow = clamp(softMask - roundedFill * 0.22, 0.0, 1.0) * (1.0 - roundedFill * 0.62);
+          float wideGlow = clamp(wideMask - roundedFill * 0.1, 0.0, 1.0) * (1.0 - roundedFill * 0.76);
+          float pulse = 0.86 + sin(uTime * 3.0) * 0.14;
+          float floatingShadow = clamp(liftedObjectMask(uv + vec2(pixel.x * 5.0, pixel.y * 8.0)) - objectFill, 0.0, 1.0);
+          color *= 1.0 - floatingShadow * uHoverStrength * 0.16;
+          color = mix(color, color * 0.95, baseObject * uHoverStrength * 0.08);
+          float tiltLight = clamp(1.04 + (uv.x - objectCenter(uHover).x) * uPointer.x * 2.1, 0.94, 1.14);
+          vec3 liftedColor = texture2D(uMap, liftedUv).rgb * tiltLight;
+          color = mix(color, liftedColor, objectFill * uHoverStrength * 0.96);
+          color += vec3(1.0, 0.9, 0.68) * silhouetteOutline * uHoverStrength * 0.44;
+          color += vec3(1.0, 0.66, 0.3) * softGlow * uHoverStrength * 0.64 * pulse;
+          color += vec3(1.0, 0.4, 0.1) * wideGlow * uHoverStrength * 0.3 * pulse;
           color *= mix(0.8, 1.0, uReveal);
           gl_FragColor = vec4(color, 1.0);
         }
@@ -395,18 +556,26 @@ function PhotorealWindowScene() {
       const dust = new T.Points(dustGeometry, dustMaterial);
       scene.add(dust);
 
-      let imageAspect = 2184 / 1005;
-      const texture = new T.TextureLoader().load(
+      const textureLoader = new T.TextureLoader();
+      const texture = textureLoader.load(
         "/og.png",
         (loaded: any) => {
           if (T.SRGBColorSpace) loaded.colorSpace = T.SRGBColorSpace;
           loaded.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
-          imageAspect = loaded.image.width / loaded.image.height;
           uniforms.uMap.value = loaded;
           resize();
           mount.dataset.ready = "true";
         },
       );
+      const maskA = textureLoader.load("/window-object-masks-a.png?v=5", (loaded: any) => {
+        uniforms.uMaskA.value = loaded;
+      });
+      const maskB = textureLoader.load("/window-object-masks-b.png?v=5", (loaded: any) => {
+        uniforms.uMaskB.value = loaded;
+      });
+      const maskCup = textureLoader.load("/window-object-mask-cup.png?v=1", (loaded: any) => {
+        uniforms.uMaskCup.value = loaded;
+      });
 
       const resize = () => {
         const width = Math.max(mount.clientWidth, 1);
@@ -416,16 +585,56 @@ function PhotorealWindowScene() {
         renderer.setSize(width, height, false);
         const visibleHeight = 2 * Math.tan((camera.fov * Math.PI) / 360) * camera.position.z;
         const visibleWidth = visibleHeight * camera.aspect;
-        if (camera.aspect > imageAspect) imagePlane.scale.set(visibleWidth, visibleWidth / imageAspect, 1);
-        else imagePlane.scale.set(visibleHeight * imageAspect, visibleHeight, 1);
+        imagePlane.scale.set(visibleWidth, visibleHeight, 1);
       };
+
+      const raycaster = new T.Raycaster();
+      const ndc = new T.Vector2();
+      const hoverTargets = [
+        { center: [0.164, 0.33], radius: [0.07, 0.32] },
+        { center: [0.388, 0.2], radius: [0.098, 0.16] },
+        { center: [0.51, 0.2], radius: [0.09, 0.18] },
+        { center: [0.615, 0.22], radius: [0.086, 0.2] },
+        { center: [0.817, 0.14], radius: [0.15, 0.11] },
+        { center: [0.251, 0.18], radius: [0.052, 0.155] },
+      ];
+      const categoryTargets: Array<Exclude<Category, "전체">> = ["토이", "문구", "토이", "문구", "토이", "빈티지 식기"];
 
       const pointerMove = (event: PointerEvent) => {
         const rect = mount.getBoundingClientRect();
         pointerTarget.x = ((event.clientX - rect.left) / rect.width - 0.5) * 2;
         pointerTarget.y = -((event.clientY - rect.top) / rect.height - 0.5) * 2;
+        ndc.set(pointerTarget.x, pointerTarget.y);
+        raycaster.setFromCamera(ndc, camera);
+        const hit = raycaster.intersectObject(imagePlane, false)[0];
+        let hovered = 0;
+        if (hit?.uv) {
+          const cupTarget = hoverTargets[5];
+          const cupDx = (hit.uv.x - cupTarget.center[0]) / cupTarget.radius[0];
+          const cupDy = (hit.uv.y - cupTarget.center[1]) / cupTarget.radius[1];
+          if (cupDx * cupDx + cupDy * cupDy <= 1) hovered = 6;
+          for (let index = 0; hovered === 0 && index < hoverTargets.length - 1; index += 1) {
+            const target = hoverTargets[index];
+            const dx = (hit.uv.x - target.center[0]) / target.radius[0];
+            const dy = (hit.uv.y - target.center[1]) / target.radius[1];
+            if (dx * dx + dy * dy <= 1) {
+              hovered = index + 1;
+              break;
+            }
+          }
+        }
+        uniforms.uHover.value = hovered;
+        mount.style.cursor = hovered ? "pointer" : "crosshair";
       };
-      const pointerLeave = () => pointerTarget.set(0, 0);
+      const pointerLeave = () => {
+        pointerTarget.set(0, 0);
+        uniforms.uHover.value = 0;
+        mount.style.cursor = "crosshair";
+      };
+      const clickObject = () => {
+        const index = Math.round(uniforms.uHover.value) - 1;
+        if (index >= 0 && categoryTargets[index]) onSelectCategory(categoryTargets[index]);
+      };
       const scrollScene = () => {
         const rect = mount.getBoundingClientRect();
         uniforms.uScroll.value = Math.max(0, Math.min(1, -rect.top / Math.max(rect.height, 1)));
@@ -435,6 +644,7 @@ function PhotorealWindowScene() {
       observer.observe(mount);
       mount.addEventListener("pointermove", pointerMove);
       mount.addEventListener("pointerleave", pointerLeave);
+      mount.addEventListener("click", clickObject);
       window.addEventListener("scroll", scrollScene, { passive: true });
       resize();
       scrollScene();
@@ -444,14 +654,13 @@ function PhotorealWindowScene() {
       const render = () => {
         const t = (performance.now() - started) / 1000;
         uniforms.uTime.value = t;
+        const hoverGoal = uniforms.uHover.value > 0 ? 1 : 0;
+        uniforms.uHoverStrength.value += (hoverGoal - uniforms.uHoverStrength.value) * 0.12;
         if (!reducedMotion) {
           pointer.lerp(pointerTarget, 0.042);
           uniforms.uReveal.value += (1 - uniforms.uReveal.value) * 0.035;
           dust.rotation.y = t * 0.012 + pointer.x * 0.04;
           dust.position.y = Math.sin(t * 0.12) * 0.025;
-          camera.position.x += (pointer.x * 0.042 - camera.position.x) * 0.032;
-          camera.position.y += (pointer.y * 0.026 - camera.position.y) * 0.032;
-          camera.lookAt(0, 0, 0);
         }
         renderer.render(scene, camera);
         raf = requestAnimationFrame(render);
@@ -463,12 +672,16 @@ function PhotorealWindowScene() {
         observer.disconnect();
         mount.removeEventListener("pointermove", pointerMove);
         mount.removeEventListener("pointerleave", pointerLeave);
+        mount.removeEventListener("click", clickObject);
         window.removeEventListener("scroll", scrollScene);
         geometry.dispose();
         material.dispose();
         dustGeometry.dispose();
         dustMaterial.dispose();
         texture.dispose();
+        maskA.dispose();
+        maskB.dispose();
+        maskCup.dispose();
         renderer.dispose();
         if (renderer.domElement.parentNode === mount) mount.removeChild(renderer.domElement);
       };
@@ -492,7 +705,7 @@ function PhotorealWindowScene() {
       cancelled = true;
       cleanup?.();
     };
-  }, []);
+  }, [onSelectCategory]);
 
   return (
     <div
@@ -768,7 +981,7 @@ function ProductCard({
   index: number;
 }) {
   return (
-    <article className="product-card" data-reveal data-delay={Math.min(index * 65, 260)}>
+    <article className={`product-card ${product.soldOut ? "is-sold-out" : ""}`} data-reveal data-delay={Math.min(index * 65, 260)}>
       <div className="product-media">
         <button className="media-button" onClick={onOpen} aria-label={`${product.name} 상세 보기`}>
           <img
@@ -779,6 +992,7 @@ function ProductCard({
           />
         </button>
         {product.badge && <span className="paper-badge">{product.badge}</span>}
+        {product.soldOut && <span className="sold-out-stamp">SOLD OUT</span>}
         <button
           className={`favorite ${favorite ? "is-active" : ""}`}
           onClick={onFavorite}
@@ -787,7 +1001,9 @@ function ProductCard({
         >
           {favorite ? "♥" : "♡"}
         </button>
-        <button className="quick-add" onClick={onAdd}>장바구니 담기</button>
+        <button className="quick-add" onClick={onAdd} disabled={product.soldOut}>
+          {product.soldOut ? "품절된 상품입니다" : "장바구니 담기"}
+        </button>
       </div>
       <button className="product-copy" onClick={onOpen}>
         <span className="product-meta">{product.year}</span>
@@ -810,8 +1026,36 @@ export default function Home() {
   const [favorites, setFavorites] = useState<Set<number>>(new Set());
   const [cart, setCart] = useState<number[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [recipient, setRecipient] = useState("");
+  const [phone, setPhone] = useState("");
+  const [deliveryMemo, setDeliveryMemo] = useState("");
+  const [orderReady, setOrderReady] = useState(false);
+  const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddress>({ zonecode: "", address: "", detail: "", extra: "" });
   const [selected, setSelected] = useState<Product | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [reviewFilter, setReviewFilter] = useState<ReviewFilter>("all");
+  const [helpfulReviews, setHelpfulReviews] = useState<Set<string>>(new Set());
+  const [userReviews, setUserReviews] = useState<Review[]>([]);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [reviewProductId, setReviewProductId] = useState(products[0].id);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewText, setReviewText] = useState("");
+  const [reviewImage, setReviewImage] = useState("");
+  const [openDrawer, setOpenDrawer] = useState<Exclude<Category, "전체"> | null>("문구");
+
+  const selectSceneCategory = useCallback((nextCategory: Exclude<Category, "전체">) => {
+    const slugs: Record<Exclude<Category, "전체">, string> = {
+      토이: "toys",
+      캐릭터: "characters",
+      문구: "stationery",
+      리빙: "living",
+      "빈티지 식기": "tableware",
+    };
+    setCategory(nextCategory);
+    window.history.pushState(null, "", `#new/${slugs[nextCategory]}`);
+    requestAnimationFrame(() => document.querySelector("#new")?.scrollIntoView({ behavior: "smooth" }));
+  }, []);
 
   const visibleProducts = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -826,6 +1070,13 @@ export default function Home() {
     });
   }, [category, query]);
 
+  const visibleReviews = useMemo(() => {
+    const allReviews = [...userReviews, ...seedReviews];
+    if (reviewFilter === "five") return allReviews.filter((review) => review.rating === 5);
+    if (reviewFilter === "photo") return allReviews.filter((review) => Boolean(review.image));
+    return allReviews;
+  }, [reviewFilter, userReviews]);
+
   const cartProducts = cart.map((id) => products.find((product) => product.id === id)).filter(Boolean) as Product[];
   const cartTotal = cartProducts.reduce((sum, product) => sum + product.price, 0);
 
@@ -839,8 +1090,34 @@ export default function Home() {
   };
 
   const addToCart = (id: number) => {
+    if (products.find((product) => product.id === id)?.soldOut) return;
     setCart((current) => [...current, id]);
     setCartOpen(true);
+  };
+
+  const submitReview = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!reviewText.trim()) return;
+    setUserReviews((current) => [
+      {
+        id: `review-user-${Date.now()}`,
+        productId: reviewProductId,
+        author: "나의 리뷰",
+        date: new Intl.DateTimeFormat("ko-KR").format(new Date()),
+        rating: reviewRating,
+        text: reviewText.trim(),
+        image: reviewImage || products.find((product) => product.id === reviewProductId)?.image || "",
+        position: reviewImage ? "center" : products.find((product) => product.id === reviewProductId)?.position,
+        helpful: 0,
+      },
+      ...current,
+    ]);
+    setReviewFilter("all");
+    setReviewText("");
+    setReviewImage("");
+    setReviewRating(5);
+    setReviewOpen(false);
+    requestAnimationFrame(() => document.querySelector("#reviews")?.scrollIntoView({ behavior: "smooth" }));
   };
 
   return (
@@ -853,12 +1130,12 @@ export default function Home() {
 
       <header className="site-header">
         <a href="#top" className="brand" aria-label="Pocket Archive 홈">
-          <span className="brand-small">THE LITTLE OLD THINGS</span>
-          <span>POCKET ARCHIVE</span>
+          <img src="/pocket-archive-sign-cropped.png" alt="Pocket Archive" />
         </a>
         <nav className={menuOpen ? "nav is-open" : "nav"} aria-label="주요 메뉴">
           <a href="#new" onClick={() => setMenuOpen(false)}>NEW IN</a>
           <a href="#collections" onClick={() => setMenuOpen(false)}>COLLECTIONS</a>
+          <a href="#reviews" onClick={() => setMenuOpen(false)}>REVIEWS</a>
           <a href="#story" onClick={() => setMenuOpen(false)}>OUR STORY</a>
           <a href="#journal" onClick={() => setMenuOpen(false)}>JOURNAL</a>
         </nav>
@@ -868,6 +1145,7 @@ export default function Home() {
           <button onClick={() => setCartOpen(true)} aria-label={`장바구니 ${cart.length}개`}>
             장바구니 <span className="cart-count">{cart.length}</span>
           </button>
+          <AuthAccountButton />
           <button className="menu-toggle" onClick={() => setMenuOpen((open) => !open)} aria-label="메뉴 열기">
             {menuOpen ? "닫기" : "메뉴"}
           </button>
@@ -891,29 +1169,20 @@ export default function Home() {
         <section className="hero">
           <div className="brick-glow" aria-hidden="true" />
           <div className="shop-sign">
-            <span>TOYS · CHARACTER GOODS · STATIONERY</span>
-            <b>POCKET ARCHIVE</b>
-            <span>HAPPINESS IN EVERY DRAWER</span>
+            <img src="/pocket-archive-sign-cropped.png" alt="Pocket Archive" />
           </div>
           <div className="hero-window">
-            <div className="window-copy">
-              <span className="eyebrow">A TINY SHOP OF OLD TREASURES</span>
-              <h1><span className="hero-line">Small things,</span><span className="hero-line"><i>old stories.</i></span></h1>
-              <p>
-                한때 누군가의 책상과 선반을 빛냈던 물건들.<br />
-                오래될수록 더 사랑스러운 작은 보물을 소개합니다.
-              </p>
-              <div className="hero-buttons">
-                <a className="button primary" href="#new">오늘의 입고품</a>
-                <a className="button text" href="#collections">상점 둘러보기 <span>→</span></a>
-              </div>
-            </div>
             <div className="scene-wrap">
-              <PhotorealWindowScene />
+              <PhotorealWindowScene onSelectCategory={selectSceneCategory} />
               <div className="window-reflection" aria-hidden="true" />
-              <a className="scene-note note-one" href="#new">1960s<br />TIN ROBOT</a>
-              <a className="scene-note note-two" href="#new">NEW<br />OLD STOCK</a>
-              <span className="scene-hint">PHOTOREAL DEPTH · MOVE CURSOR</span>
+            </div>
+            <div className="window-copy">
+              <span className="scene-hint">POCKET ARCHIVE · MOVE CURSOR · DISCOVER OBJECTS</span>
+              <div>
+                <span className="eyebrow">A TINY SHOP OF OLD TREASURES</span>
+                <h1><span className="hero-line">Small things,</span><span className="hero-line"><i>old stories.</i></span></h1>
+              </div>
+              <p className="scene-action">빛나는 오브제를 클릭하면 컬렉션으로 이어집니다. <span>→</span></p>
             </div>
           </div>
           <a className="scroll-note" href="#new">SCROLL TO BROWSE <span>↓</span></a>
@@ -960,6 +1229,83 @@ export default function Home() {
           )}
         </section>
 
+        <section className="reviews-section" id="reviews">
+          <div className="reviews-head" data-reveal>
+            <div>
+              <span className="eyebrow green">FROM THEIR NEW HOMES</span>
+              <h2>오래된 물건의<br /><i>새로운 이야기</i></h2>
+            </div>
+            <div className="review-score" aria-label="구매 후기 평균 별점 4.9점">
+              <strong>4.9</strong>
+              <div><span className="review-stars">★★★★★</span><small>구매 후기 {seedReviews.length + userReviews.length}개</small></div>
+            </div>
+          </div>
+
+          <div className="review-toolbar" data-reveal>
+            <div className="review-tabs" role="tablist" aria-label="리뷰 필터">
+              {([
+                ["all", "전체 리뷰"],
+                ["photo", "포토 리뷰"],
+                ["five", "별점 5점"],
+              ] as Array<[ReviewFilter, string]>).map(([value, label]) => (
+                <button
+                  key={value}
+                  role="tab"
+                  aria-selected={reviewFilter === value}
+                  className={reviewFilter === value ? "active" : ""}
+                  onClick={() => setReviewFilter(value)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <button className="review-write" onClick={() => setReviewOpen(true)}>리뷰 작성하기</button>
+          </div>
+
+          <div className="review-grid">
+            {visibleReviews.map((review, index) => {
+              const reviewProduct = products.find((product) => product.id === review.productId)!;
+              const markedHelpful = helpfulReviews.has(review.id);
+              return (
+                <article className="review-card" key={review.id} data-reveal data-delay={Math.min(index * 70, 260)}>
+                  <button className="review-photo" onClick={() => setSelected(reviewProduct)} aria-label={`${reviewProduct.name} 상세 보기`}>
+                    <img src={review.image} alt={`${reviewProduct.name} 구매 후기 사진`} style={{ objectPosition: review.position }} />
+                    {reviewProduct.soldOut && <span>SOLD OUT ARCHIVE</span>}
+                  </button>
+                  <div className="review-body">
+                    <div className="review-rating-row">
+                      <span className="review-stars" aria-label={`별점 ${review.rating}점`}>
+                        {"★".repeat(review.rating)}<i>{"★".repeat(5 - review.rating)}</i>
+                      </span>
+                      <time>{review.date}</time>
+                    </div>
+                    <button className="review-product" onClick={() => setSelected(reviewProduct)}>
+                      <span>{reviewProduct.category} · {reviewProduct.year}</span>
+                      <strong>{reviewProduct.name}</strong>
+                    </button>
+                    <p>{review.text}</p>
+                    <div className="review-foot">
+                      <span>구매 인증 · {review.author}</span>
+                      <button
+                        className={markedHelpful ? "is-helpful" : ""}
+                        aria-pressed={markedHelpful}
+                        onClick={() => setHelpfulReviews((current) => {
+                          const next = new Set(current);
+                          if (next.has(review.id)) next.delete(review.id);
+                          else next.add(review.id);
+                          return next;
+                        })}
+                      >
+                        ♡ 도움돼요 {review.helpful + (markedHelpful ? 1 : 0)}
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+
         <section className="collections" id="collections">
           <div className="section-heading compact" data-reveal>
             <div>
@@ -968,25 +1314,33 @@ export default function Home() {
             </div>
             <p>수집을 시작하기 좋은 네 가지 선반을 준비했습니다.</p>
           </div>
-          <div className="collection-grid">
-            <button className="collection-card tall" data-reveal data-duration="1150" onClick={() => { setCategory("캐릭터"); location.hash = "new"; }}>
-              <img src="/references/character-glass.png" alt="빈티지 캐릭터 유리잔" />
-              <span className="collection-number">01</span>
-              <span className="collection-title">Character<br /><i>Goods</i></span>
-              <span className="collection-link">컵, 인형과 작은 기념품 →</span>
-            </button>
-            <button className="collection-card" data-reveal data-delay="90" data-duration="1150" onClick={() => { setCategory("문구"); location.hash = "new"; }}>
-              <img src="/references/stationery-desk.png" alt="오래된 노트와 문구가 놓인 책상" />
-              <span className="collection-number">02</span>
-              <span className="collection-title">Paper &amp;<br /><i>Stationery</i></span>
-              <span className="collection-link">쓰고 간직하는 물건 →</span>
-            </button>
-            <button className="collection-card" data-reveal data-delay="160" data-duration="1150" onClick={() => { setCategory("토이"); location.hash = "new"; }}>
-              <img src="/references/shop-interior.png" alt="인형과 장난감으로 가득한 빈티지 숍" />
-              <span className="collection-number">03</span>
-              <span className="collection-title">Toys &amp;<br /><i>Friends</i></span>
-              <span className="collection-link">오래된 놀이 친구들 →</span>
-            </button>
+          <div className="drawer-cabinet">
+            {drawerCollections.map((drawer, index) => {
+              const isOpen = openDrawer === drawer.category;
+              return (
+                <article className={`drawer-unit ${isOpen ? "is-open" : ""}`} key={drawer.category} data-reveal data-delay={index * 70}>
+                  <div className="drawer-interior">
+                    <img src={drawer.image} alt="" style={{ objectPosition: drawer.position }} />
+                    <div>
+                      <span>INSIDE DRAWER {drawer.number}</span>
+                      <strong>{drawer.description}</strong>
+                      <button onClick={() => selectSceneCategory(drawer.category)}>{drawer.category} 보기 →</button>
+                    </div>
+                  </div>
+                  <button
+                    className="drawer-front"
+                    onClick={() => setOpenDrawer((current) => current === drawer.category ? null : drawer.category)}
+                    aria-expanded={isOpen}
+                    aria-label={`${drawer.category} 서랍 ${isOpen ? "닫기" : "열기"}`}
+                  >
+                    <span className="drawer-number">{drawer.number}</span>
+                    <span className="drawer-title">{drawer.title}<br /><i>{drawer.accent}</i></span>
+                    <span className="drawer-handle"><b /></span>
+                    <span className="drawer-command">{isOpen ? "CLOSE DRAWER" : "OPEN DRAWER"}</span>
+                  </button>
+                </article>
+              );
+            })}
           </div>
         </section>
 
@@ -1041,9 +1395,9 @@ export default function Home() {
       </main>
 
       <footer>
-        <a href="#top" className="footer-brand">POCKET<br /><i>ARCHIVE</i></a>
+        <a href="#top" className="footer-brand" aria-label="Pocket Archive 홈"><img src="/pocket-archive-sign-cropped.png" alt="Pocket Archive" /></a>
         <div className="footer-links">
-          <div><b>SHOP</b><a href="#new">새로 들어온 물건</a><a href="#collections">카테고리</a><a href="#new">모든 상품</a></div>
+          <div><b>SHOP</b><a href="#new">새로 들어온 물건</a><a href="#collections">카테고리</a><a href="#reviews">구매 후기</a></div>
           <div><b>HELP</b><a href="#story">배송과 포장</a><a href="#story">상태 등급 안내</a><a href="#story">문의하기</a></div>
           <div><b>VISIT</b><span>서울시 성동구 작은 골목 17</span><span>WED–SUN · 12–19</span><span>@pocket.archive</span></div>
         </div>
@@ -1068,11 +1422,73 @@ export default function Home() {
                   ))}
                 </div>
                 <div className="cart-total"><span>합계</span><b>₩{money.format(cartTotal)}</b></div>
-                <button className="checkout">주문서 작성하기</button>
+                <button className="checkout" onClick={() => { setCartOpen(false); setCheckoutOpen(true); setOrderReady(false); }}>주문서 작성하기</button>
                 <small className="cart-help">모든 상품은 한 점만 보유하고 있어요. 결제 완료 시 재고가 확정됩니다.</small>
               </>
             )}
           </aside>
+        </div>
+      )}
+
+      {checkoutOpen && (
+        <div className="overlay modal-overlay checkout-overlay" onMouseDown={() => setCheckoutOpen(false)}>
+          <form
+            className="shipping-modal"
+            onMouseDown={(event) => event.stopPropagation()}
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!deliveryAddress.zonecode || !deliveryAddress.detail.trim()) return;
+              setOrderReady(true);
+            }}
+          >
+            <button type="button" className="modal-close" onClick={() => setCheckoutOpen(false)} aria-label="배송지 입력 닫기">×</button>
+            <div className="shipping-heading">
+              <span>DELIVERY NOTE · SEOUL</span>
+              <h2>어디로 보내드릴까요?</h2>
+              <p>오래된 물건이 새로운 이야기를 시작할 주소를 알려주세요.</p>
+            </div>
+
+            {orderReady ? (
+              <div className="order-ready-card" aria-live="polite">
+                <span>ADDRESS CONFIRMED</span>
+                <h3>배송지가 확인되었습니다.</h3>
+                <p>{recipient} · {phone}</p>
+                <address>
+                  [{deliveryAddress.zonecode}] {deliveryAddress.address} {deliveryAddress.extra}<br />
+                  {deliveryAddress.detail}
+                </address>
+                {deliveryMemo && <small>배송 메모 · {deliveryMemo}</small>}
+                <div><span>주문 금액</span><b>₩{money.format(cartTotal)}</b></div>
+                <button type="button" className="checkout" onClick={() => setOrderReady(false)}>배송지 수정하기</button>
+              </div>
+            ) : (
+              <>
+                <div className="recipient-grid">
+                  <label>
+                    <span>받는 분</span>
+                    <input value={recipient} onChange={(event) => setRecipient(event.target.value)} placeholder="이름" required autoComplete="name" />
+                  </label>
+                  <label>
+                    <span>연락처</span>
+                    <input value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="010-0000-0000" required inputMode="tel" autoComplete="tel" />
+                  </label>
+                </div>
+                <KakaoAddressSearch value={deliveryAddress} onChange={setDeliveryAddress} />
+                <label className="delivery-memo">
+                  <span>배송 메모</span>
+                  <select value={deliveryMemo} onChange={(event) => setDeliveryMemo(event.target.value)}>
+                    <option value="">배송 메모를 선택해주세요.</option>
+                    <option value="문 앞에 놓아주세요.">문 앞에 놓아주세요.</option>
+                    <option value="배송 전 연락 부탁드립니다.">배송 전 연락 부탁드립니다.</option>
+                    <option value="경비실에 맡겨주세요.">경비실에 맡겨주세요.</option>
+                  </select>
+                </label>
+                <div className="shipping-total"><span>{cartProducts.length}개의 빈티지 물건</span><b>₩{money.format(cartTotal)}</b></div>
+                <button className="checkout" type="submit" disabled={!deliveryAddress.zonecode}>배송지 확인하기</button>
+                <small className="kakao-notice">카카오 우편번호 서비스를 통해 주소를 검색합니다. 입력한 정보는 현재 주문서에만 사용됩니다.</small>
+              </>
+            )}
+          </form>
         </div>
       )}
 
@@ -1087,10 +1503,62 @@ export default function Home() {
               <p className="modal-en">{selected.englishName}</p>
               <strong className="modal-price">₩{money.format(selected.price)}</strong>
               <p>세월에 따른 미세한 사용감이 있지만 전체적인 프린트와 형태가 아름답게 보존된 제품입니다. 상세 상태는 주문 전 다시 한번 안내드립니다.</p>
-              <div className="detail-table"><span>상태</span><b>{selected.condition}</b><span>재고</span><b>1점</b><span>배송</span><b>2–3 영업일</b></div>
-              <button className="checkout" onClick={() => { addToCart(selected.id); setSelected(null); }}>장바구니 담기</button>
+              <div className="detail-table"><span>상태</span><b>{selected.condition}</b><span>재고</span><b className={selected.soldOut ? "sold-out-text" : ""}>{selected.soldOut ? "SOLD OUT" : "1점"}</b><span>배송</span><b>{selected.soldOut ? "판매 완료된 아카이브" : "2–3 영업일"}</b></div>
+              <button className="checkout" disabled={selected.soldOut} onClick={() => { addToCart(selected.id); setSelected(null); }}>
+                {selected.soldOut ? "품절된 상품입니다" : "장바구니 담기"}
+              </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {reviewOpen && (
+        <div className="overlay modal-overlay" onMouseDown={() => setReviewOpen(false)}>
+          <form className="review-modal" onSubmit={submitReview} onMouseDown={(event) => event.stopPropagation()}>
+            <button type="button" className="modal-close" onClick={() => setReviewOpen(false)} aria-label="리뷰 작성 닫기">×</button>
+            <span className="eyebrow green">SHARE A NEW STORY</span>
+            <h2>구매 후기를 남겨주세요.</h2>
+            <label>
+              리뷰 상품
+              <select value={reviewProductId} onChange={(event) => setReviewProductId(Number(event.target.value))}>
+                {products.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}
+              </select>
+            </label>
+            <fieldset>
+              <legend>별점</legend>
+              <div className="rating-input">
+                {[1, 2, 3, 4, 5].map((rating) => (
+                  <button
+                    type="button"
+                    key={rating}
+                    className={rating <= reviewRating ? "active" : ""}
+                    onClick={() => setReviewRating(rating)}
+                    aria-label={`${rating}점`}
+                  >★</button>
+                ))}
+              </div>
+            </fieldset>
+            <label>
+              상품평
+              <textarea value={reviewText} onChange={(event) => setReviewText(event.target.value)} placeholder="물건의 상태, 포장, 새 자리에서의 이야기를 들려주세요." required />
+            </label>
+            <label className="photo-upload">
+              사진 첨부
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = () => setReviewImage(String(reader.result || ""));
+                  reader.readAsDataURL(file);
+                }}
+              />
+              <span>{reviewImage ? "사진이 준비되었습니다 ✓" : "상품 사진 선택하기"}</span>
+            </label>
+            <button className="checkout" type="submit">리뷰 등록하기</button>
+          </form>
         </div>
       )}
     </div>
