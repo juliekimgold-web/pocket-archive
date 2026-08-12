@@ -1130,8 +1130,8 @@ export default function Home() {
   const [reviewImage, setReviewImage] = useState("");
   const [openingDrawer, setOpeningDrawer] = useState<Exclude<Category, "전체"> | null>(null);
   const drawerPointerStart = useRef({ x: 0, y: 0 });
-  const drawerWasOpenOnPointerDown = useRef(false);
   const drawerPointerWasTouch = useRef(false);
+  const drawerOpenedAt = useRef<Record<string, number>>({});
   const drawerNavigationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const selectSceneCategory = useCallback((nextCategory: Exclude<Category, "전체">) => {
@@ -1156,7 +1156,6 @@ export default function Home() {
 
   const startDrawerTap = (event: ReactPointerEvent<HTMLButtonElement>, nextCategory: Exclude<Category, "전체">) => {
     drawerPointerStart.current = { x: event.clientX, y: event.clientY };
-    drawerWasOpenOnPointerDown.current = openingDrawer === nextCategory;
     drawerPointerWasTouch.current =
       event.pointerType === "touch" ||
       window.matchMedia("(hover: none), (pointer: coarse)").matches ||
@@ -1172,11 +1171,8 @@ export default function Home() {
       return;
     }
     if (drawerPointerWasTouch.current) {
-      if (drawerWasOpenOnPointerDown.current) {
-        selectSceneCategory(nextCategory);
-      } else {
-        setOpeningDrawer(nextCategory);
-      }
+      drawerOpenedAt.current[nextCategory] = Date.now();
+      setOpeningDrawer(nextCategory);
       return;
     }
     openCategoryDrawer(nextCategory);
@@ -1498,6 +1494,11 @@ export default function Home() {
                     href={`#new/${categorySlugs[drawer.category]}`}
                     onClick={(event) => {
                       event.preventDefault();
+                      const isMobileInteraction =
+                        window.innerWidth <= 760 ||
+                        window.matchMedia("(hover: none), (pointer: coarse)").matches;
+                      const justOpened = Date.now() - (drawerOpenedAt.current[drawer.category] || 0) < 450;
+                      if (isMobileInteraction && (openingDrawer !== drawer.category || justOpened)) return;
                       selectSceneCategory(drawer.category);
                     }}
                     aria-label={`${drawer.category} 상품 보기`}
@@ -1514,7 +1515,18 @@ export default function Home() {
                     onPointerDown={(event) => startDrawerTap(event, drawer.category)}
                     onPointerUp={(event) => finishDrawerTap(event, drawer.category)}
                     onPointerCancel={() => { drawerPointerStart.current = { x: 0, y: 0 }; }}
-                    onClick={(event) => { if (event.detail === 0) openCategoryDrawer(drawer.category); }}
+                    onClick={(event) => {
+                      if (event.detail !== 0) return;
+                      const isMobileInteraction =
+                        window.innerWidth <= 760 ||
+                        window.matchMedia("(hover: none), (pointer: coarse)").matches;
+                      if (isMobileInteraction) {
+                        drawerOpenedAt.current[drawer.category] = Date.now();
+                        setOpeningDrawer(drawer.category);
+                      } else {
+                        openCategoryDrawer(drawer.category);
+                      }
+                    }}
                     aria-label={openingDrawer === drawer.category ? `${drawer.category} 상품 카테고리로 이동` : `${drawer.category} 서랍 열기`}
                   >
                     <span className="drawer-number">{drawer.number}</span>
