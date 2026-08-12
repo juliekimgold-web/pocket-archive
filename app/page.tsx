@@ -131,6 +131,18 @@ const products: Product[] = [
     image: "/products/retro-postcard-flatlay-v2.png",
     position: "50% 50%",
   },
+  {
+    id: 9,
+    name: "선물박스 포장 · 쇼핑백",
+    englishName: "Gift Box & Shopping Bag",
+    category: "리빙",
+    year: "Pocket Archive · Service",
+    price: 1000,
+    condition: "Test Payment",
+    badge: "결제 테스트",
+    image: "/products/gift-wrap-test.png",
+    position: "50% 50%",
+  },
 ];
 
 const categories: Category[] = ["전체", "토이", "캐릭터", "문구", "빈티지 식기", "리빙"];
@@ -600,11 +612,14 @@ function PhotorealWindowScene({
         { center: [0.251, 0.18], radius: [0.052, 0.155] },
       ];
       const categoryTargets: Array<Exclude<Category, "전체">> = ["토이", "문구", "토이", "문구", "토이", "빈티지 식기"];
+      const isTouchOnly = window.matchMedia("(hover: none), (pointer: coarse)").matches;
+      let activeTouchTarget = 0;
+      let touchStart: { x: number; y: number } | null = null;
 
-      const pointerMove = (event: PointerEvent) => {
+      const resolveTarget = (clientX: number, clientY: number) => {
         const rect = mount.getBoundingClientRect();
-        pointerTarget.x = ((event.clientX - rect.left) / rect.width - 0.5) * 2;
-        pointerTarget.y = -((event.clientY - rect.top) / rect.height - 0.5) * 2;
+        pointerTarget.x = ((clientX - rect.left) / rect.width - 0.5) * 2;
+        pointerTarget.y = -((clientY - rect.top) / rect.height - 0.5) * 2;
         ndc.set(pointerTarget.x, pointerTarget.y);
         raycaster.setFromCamera(ndc, camera);
         const hit = raycaster.intersectObject(imagePlane, false)[0];
@@ -624,15 +639,51 @@ function PhotorealWindowScene({
             }
           }
         }
+        return hovered;
+      };
+
+      const pointerMove = (event: PointerEvent) => {
+        if (isTouchOnly || event.pointerType === "touch") return;
+        const hovered = resolveTarget(event.clientX, event.clientY);
         uniforms.uHover.value = hovered;
         mount.style.cursor = hovered ? "pointer" : "crosshair";
       };
       const pointerLeave = () => {
+        if (isTouchOnly) return;
         pointerTarget.set(0, 0);
         uniforms.uHover.value = 0;
         mount.style.cursor = "crosshair";
       };
-      const clickObject = () => {
+      const pointerDown = (event: PointerEvent) => {
+        if (isTouchOnly || event.pointerType === "touch") {
+          touchStart = { x: event.clientX, y: event.clientY };
+        }
+      };
+      const activateObject = (event: PointerEvent) => {
+        if ((isTouchOnly || event.pointerType === "touch") && touchStart) {
+          const travel = Math.hypot(event.clientX - touchStart.x, event.clientY - touchStart.y);
+          touchStart = null;
+          if (travel > 12) return;
+        }
+        const target = resolveTarget(event.clientX, event.clientY);
+        if (isTouchOnly || event.pointerType === "touch") {
+          event.preventDefault();
+          if (!target) {
+            activeTouchTarget = 0;
+            uniforms.uHover.value = 0;
+            mount.removeAttribute("data-touch-active");
+            return;
+          }
+          if (activeTouchTarget !== target) {
+            activeTouchTarget = target;
+            uniforms.uHover.value = target;
+            mount.dataset.touchActive = "true";
+            mount.setAttribute("aria-label", "선택한 오브제가 빛나고 있습니다. 같은 오브제를 한 번 더 탭하면 카테고리로 이동합니다.");
+            return;
+          }
+        } else {
+          uniforms.uHover.value = target;
+        }
         const index = Math.round(uniforms.uHover.value) - 1;
         if (index >= 0 && categoryTargets[index]) onSelectCategory(categoryTargets[index]);
       };
@@ -645,7 +696,8 @@ function PhotorealWindowScene({
       observer.observe(mount);
       mount.addEventListener("pointermove", pointerMove);
       mount.addEventListener("pointerleave", pointerLeave);
-      mount.addEventListener("click", clickObject);
+      mount.addEventListener("pointerdown", pointerDown);
+      mount.addEventListener("pointerup", activateObject);
       window.addEventListener("scroll", scrollScene, { passive: true });
       resize();
       scrollScene();
@@ -673,7 +725,8 @@ function PhotorealWindowScene({
         observer.disconnect();
         mount.removeEventListener("pointermove", pointerMove);
         mount.removeEventListener("pointerleave", pointerLeave);
-        mount.removeEventListener("click", clickObject);
+        mount.removeEventListener("pointerdown", pointerDown);
+        mount.removeEventListener("pointerup", activateObject);
         window.removeEventListener("scroll", scrollScene);
         geometry.dispose();
         material.dispose();
@@ -713,7 +766,7 @@ function PhotorealWindowScene({
       ref={mountRef}
       className="photoreal-window"
       role="img"
-      aria-label="햇살이 비치는 벽돌 건물 안에 빈티지 로봇, 테디베어, 문구와 장난감 기차가 진열된 포토리얼 쇼윈도"
+      aria-label="햇살이 비치는 빈티지 쇼윈도. 모바일에서는 오브제를 한 번 탭해 강조하고 같은 오브제를 다시 탭해 카테고리로 이동합니다."
     />
   );
 }
@@ -1178,7 +1231,7 @@ export default function Home() {
               <div className="window-reflection" aria-hidden="true" />
             </div>
             <div className="window-copy">
-              <span className="scene-hint">POCKET ARCHIVE · MOVE CURSOR · DISCOVER OBJECTS</span>
+              <span className="scene-hint"><span className="desktop-hint">POCKET ARCHIVE · MOVE CURSOR · DISCOVER OBJECTS</span><span className="touch-hint">OBJECT를 한 번 탭해 빛내고 · 다시 탭해 둘러보세요</span></span>
               <div>
                 <span className="eyebrow">A TINY SHOP OF OLD TREASURES</span>
                 <h1><span className="hero-line">Small things,</span><span className="hero-line"><i>old stories.</i></span></h1>
