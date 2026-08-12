@@ -113,6 +113,8 @@ const articles: JournalArticle[] = [
   },
 ];
 
+const articleFormats = ["COVER STORY", "OBJECT STUDY", "CARE GUIDE", "AT HOME", "ARCHIVE NOTE"];
+
 export default function JournalPage() {
   const [selectedSlug, setSelectedSlug] = useState(articles[0].slug);
   const selected = articles.find((article) => article.slug === selectedSlug) || articles[0];
@@ -148,16 +150,37 @@ export default function JournalPage() {
         </section>
 
         <section className="journal-library" aria-labelledby="library-title">
+          <div className="journal-contents-bar">
+            <b>CONTENTS</b>
+            <span>VOL. 01</span>
+            <nav aria-label="아티클 빠른 이동">
+              {articles.map((article, index) => (
+                <button key={article.slug} onClick={() => openArticle(article)} aria-label={`${article.title} 읽기`}>
+                  {String(index + 1).padStart(2, "0")}
+                </button>
+              ))}
+            </nav>
+            <small>FIVE NOTES ON KEEPING OLD THINGS</small>
+          </div>
           <div className="journal-section-title">
-            <span>THE ARCHIVE INDEX</span>
-            <h2 id="library-title">수집가의 읽을거리</h2>
+            <span>THE ARCHIVE INDEX · 01—05</span>
+            <h2 id="library-title">수집가의<br />읽을거리</h2>
             <p>관심 있는 주제를 고르면 아래 열람실에서 전문을 읽을 수 있습니다.</p>
           </div>
           <div className="journal-card-grid">
             {articles.map((article, index) => (
-              <button className={`journal-card ${article.slug === selectedSlug ? "is-selected" : ""}`} key={article.slug} onClick={() => openArticle(article)}>
-                <span className="journal-card-image"><img src={article.image} alt="" style={{ objectPosition: article.imagePosition }} /><b>{String(index + 1).padStart(2, "0")}</b></span>
-                <span className="journal-card-copy"><small>{article.category} · {article.readTime}</small><strong>{article.title}</strong><span>{article.summary}</span><i>아티클 읽기 →</i></span>
+              <button className={`journal-card journal-card-${index + 1} ${article.slug === selectedSlug ? "is-selected" : ""}`} key={article.slug} onClick={() => openArticle(article)}>
+                <span className="journal-card-image">
+                  <img src={article.image} alt="" style={{ objectPosition: article.imagePosition }} />
+                  <b>{String(index + 1).padStart(2, "0")}</b>
+                  <em>{articleFormats[index]}</em>
+                </span>
+                <span className="journal-card-copy">
+                  <small>{article.issue} / {article.category}</small>
+                  <strong>{article.title}</strong>
+                  <span>{article.summary}</span>
+                  <span className="journal-card-line"><i>{article.readTime} READ</i><i>아티클 읽기 ↗</i></span>
+                </span>
               </button>
             ))}
           </div>
