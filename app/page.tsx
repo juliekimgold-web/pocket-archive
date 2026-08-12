@@ -1119,7 +1119,6 @@ export default function Home() {
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewText, setReviewText] = useState("");
   const [reviewImage, setReviewImage] = useState("");
-  const [openDrawer, setOpenDrawer] = useState<Exclude<Category, "전체"> | null>("문구");
 
   const selectSceneCategory = useCallback((nextCategory: Exclude<Category, "전체">) => {
     const slugs: Record<Exclude<Category, "전체">, string> = {
@@ -1358,8 +1357,8 @@ export default function Home() {
         <section className="reviews-section" id="reviews">
           <div className="reviews-head" data-reveal>
             <div>
-              <span className="eyebrow green">FROM THEIR NEW HOMES</span>
-              <h2>오래된 물건의<br /><i>새로운 이야기</i></h2>
+              <span className="eyebrow green">CUSTOMER REVIEWS</span>
+              <h2>고객들의<br /><i>솔직한 구매 후기</i></h2>
             </div>
             <div className="review-score" aria-label="구매 후기 평균 별점 4.9점">
               <strong>4.9</strong>
@@ -1442,9 +1441,8 @@ export default function Home() {
           </div>
           <div className="drawer-cabinet">
             {drawerCollections.map((drawer, index) => {
-              const isOpen = openDrawer === drawer.category;
               return (
-                <article className={`drawer-unit ${isOpen ? "is-open" : ""}`} key={drawer.category} data-reveal data-delay={index * 70}>
+                <article className="drawer-unit" key={drawer.category} data-reveal data-delay={index * 70}>
                   <div className="drawer-interior">
                     <img src={drawer.image} alt="" style={{ objectPosition: drawer.position }} />
                     <div>
@@ -1455,14 +1453,13 @@ export default function Home() {
                   </div>
                   <button
                     className="drawer-front"
-                    onClick={() => setOpenDrawer((current) => current === drawer.category ? null : drawer.category)}
-                    aria-expanded={isOpen}
-                    aria-label={`${drawer.category} 서랍 ${isOpen ? "닫기" : "열기"}`}
+                    onClick={() => selectSceneCategory(drawer.category)}
+                    aria-label={`${drawer.category} 상품 카테고리 보기`}
                   >
                     <span className="drawer-number">{drawer.number}</span>
                     <span className="drawer-title">{drawer.title}<br /><i>{drawer.accent}</i></span>
                     <span className="drawer-handle"><b /></span>
-                    <span className="drawer-command">{isOpen ? "CLOSE DRAWER" : "OPEN DRAWER"}</span>
+                    <span className="drawer-command">VIEW CATEGORY</span>
                   </button>
                 </article>
               );
