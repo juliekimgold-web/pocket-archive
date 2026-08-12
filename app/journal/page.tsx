@@ -138,13 +138,13 @@ export default function JournalPage() {
 
       <main>
         <section className="journal-hero">
+          <div className="journal-hero-image"><img src="/journal/desk-archive-editorial.webp" alt="오래된 종이 수집품을 살피는 수집가의 책상" /><span>FEATURE<br />THE QUIET ART<br />OF KEEPING</span></div>
           <div className="journal-hero-copy">
             <span>VOLUME 01 · AUTUMN 2026</span>
             <h1>오래된 물건을<br />더 오래 사랑하는 법</h1>
             <p>수집의 시작부터 진품을 살피는 눈, 안전한 보관과 일상에서 즐기는 방법까지 기록합니다.</p>
             <div className="journal-hero-meta"><b>POCKET ARCHIVE JOURNAL</b><small>OBJECTS · PEOPLE · CARE</small></div>
           </div>
-          <div className="journal-hero-image"><img src="/journal/desk-archive-editorial.webp" alt="오래된 종이 수집품을 살피는 수집가의 책상" /><span>FEATURE<br />THE QUIET ART<br />OF KEEPING</span></div>
         </section>
 
         <section className="journal-library" aria-labelledby="library-title">
