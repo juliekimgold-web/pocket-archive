@@ -409,6 +409,7 @@ function PhotorealWindowScene({
         uMaskA: { value: null },
         uMaskB: { value: null },
         uMaskCup: { value: null },
+        uCrop: { value: new T.Vector4(0.18, 0.91, 0.11, 0.721) },
         uTime: { value: 0 },
         uPointer: { value: pointer },
         uScroll: { value: 0 },
@@ -436,6 +437,7 @@ function PhotorealWindowScene({
         uniform sampler2D uMaskA;
         uniform sampler2D uMaskB;
         uniform sampler2D uMaskCup;
+        uniform vec4 uCrop;
         uniform vec2 uPointer;
         uniform float uTime;
         uniform float uScroll;
@@ -487,13 +489,13 @@ function PhotorealWindowScene({
 
         void main() {
           vec2 uv = vec2(
-            mix(0.18, 0.91, vUv.x),
-            mix(0.11, 0.721, vUv.y)
+            mix(uCrop.x, uCrop.y, vUv.x),
+            mix(uCrop.z, uCrop.w, vUv.y)
           );
           vec3 probe = texture2D(uMap, uv).rgb;
           float luma = dot(probe, vec3(0.299, 0.587, 0.114));
           float foreground = smoothstep(0.22, 0.78, luma) * 0.55 + smoothstep(0.15, 0.92, 1.0 - uv.y) * 0.28;
-          uv = clamp(uv, vec2(0.18, 0.11), vec2(0.91, 0.721));
+          uv = clamp(uv, uCrop.xz, uCrop.yw);
 
           vec3 color = texture2D(uMap, uv).rgb;
           float lampPulse = sin(uTime * 1.35) * 0.5 + 0.5;
@@ -602,6 +604,8 @@ function PhotorealWindowScene({
       const resize = () => {
         const width = Math.max(mount.clientWidth, 1);
         const height = Math.max(mount.clientHeight, 1);
+        if (window.innerWidth <= 760) uniforms.uCrop.value.set(0.18, 0.91, 0.035, 0.82);
+        else uniforms.uCrop.value.set(0.18, 0.91, 0.11, 0.721);
         camera.aspect = width / height;
         camera.updateProjectionMatrix();
         renderer.setSize(width, height, false);
@@ -613,12 +617,12 @@ function PhotorealWindowScene({
       const raycaster = new T.Raycaster();
       const ndc = new T.Vector2();
       const hoverTargets = [
-        { center: [0.164, 0.33], radius: [0.07, 0.32] },
-        { center: [0.388, 0.2], radius: [0.098, 0.16] },
-        { center: [0.51, 0.2], radius: [0.09, 0.18] },
-        { center: [0.615, 0.22], radius: [0.086, 0.2] },
-        { center: [0.817, 0.14], radius: [0.15, 0.11] },
-        { center: [0.251, 0.18], radius: [0.052, 0.155] },
+        { center: [0.302, 0.33], radius: [0.051, 0.196] },
+        { center: [0.455, 0.23], radius: [0.072, 0.098] },
+        { center: [0.545, 0.22], radius: [0.066, 0.11] },
+        { center: [0.63, 0.22], radius: [0.063, 0.122] },
+        { center: [0.776, 0.18], radius: [0.11, 0.067] },
+        { center: [0.363, 0.22], radius: [0.038, 0.095] },
       ];
       const categoryTargets: Array<Exclude<Category, "전체">> = ["토이", "문구", "토이", "문구", "토이", "빈티지 식기"];
       const isTouchOnly = window.matchMedia("(hover: none), (pointer: coarse)").matches;
@@ -634,14 +638,19 @@ function PhotorealWindowScene({
         const hit = raycaster.intersectObject(imagePlane, false)[0];
         let hovered = 0;
         if (hit?.uv) {
+          const crop = uniforms.uCrop.value;
+          const imageUv = {
+            x: crop.x + (crop.y - crop.x) * hit.uv.x,
+            y: crop.z + (crop.w - crop.z) * hit.uv.y,
+          };
           const cupTarget = hoverTargets[5];
-          const cupDx = (hit.uv.x - cupTarget.center[0]) / cupTarget.radius[0];
-          const cupDy = (hit.uv.y - cupTarget.center[1]) / cupTarget.radius[1];
+          const cupDx = (imageUv.x - cupTarget.center[0]) / cupTarget.radius[0];
+          const cupDy = (imageUv.y - cupTarget.center[1]) / cupTarget.radius[1];
           if (cupDx * cupDx + cupDy * cupDy <= 1) hovered = 6;
           for (let index = 0; hovered === 0 && index < hoverTargets.length - 1; index += 1) {
             const target = hoverTargets[index];
-            const dx = (hit.uv.x - target.center[0]) / target.radius[0];
-            const dy = (hit.uv.y - target.center[1]) / target.radius[1];
+            const dx = (imageUv.x - target.center[0]) / target.radius[0];
+            const dy = (imageUv.y - target.center[1]) / target.radius[1];
             if (dx * dx + dy * dy <= 1) {
               hovered = index + 1;
               break;
