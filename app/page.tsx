@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent, PointerEvent as ReactPointerEvent } from "react";
 import AuthAccountButton from "./auth-account-button";
+import AiShopAssistant from "./ai-shop-assistant";
 import KakaoAddressSearch, { type DeliveryAddress } from "./kakao-address-search";
 import { getSupabaseBrowserClient } from "./supabase-client";
 import TossPayment from "./toss-payment";
@@ -1746,6 +1747,7 @@ export default function Home() {
           </form>
         </div>
       )}
+      <AiShopAssistant />
     </div>
   );
 }

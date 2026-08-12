@@ -94,6 +94,14 @@ actions tied to the current ChatGPT user. Leave public content anonymous.
 - `npm test`: build the starter and verify its rendered loading skeleton
 - `npm run db:generate`: generate Drizzle migrations after schema changes
 
+## Pocket Guide AI
+
+The storefront chat widget calls the `pocket-assistant` Supabase Edge Function.
+Keep `GROQ_API_KEY` in Supabase Edge Function Secrets only; never expose it with
+a `NEXT_PUBLIC_` prefix or commit it to this repository. The function currently
+uses Groq's `openai/gpt-oss-20b` model and applies short-conversation and
+per-instance rate limits to protect the free quota.
+
 ## Learn More
 
 - [vinext Documentation](https://github.com/cloudflare/vinext)
