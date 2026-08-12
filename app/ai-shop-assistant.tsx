@@ -82,8 +82,11 @@ export default function AiShopAssistant() {
     <aside className={`ai-assistant ${open ? "is-open" : ""}`} aria-label="Pocket Archive AI 상담">
       {open && (
         <section className="ai-chat-panel">
-          <header>
-            <div><span>POCKET GUIDE · AI</span><strong>무엇을 찾아드릴까요?</strong></div>
+          <header className="ai-chat-heading">
+            <div className="ai-guide-portrait" aria-hidden="true">
+              <img src="/characters/pocket-guide.webp" alt="" />
+            </div>
+            <div className="ai-guide-title"><span>POCKET GUIDE · AI</span><strong>무엇을 찾아드릴까요?</strong><small>작은 상점지기 포키예요</small></div>
             <button type="button" onClick={() => setOpen(false)} aria-label="AI 상담 닫기">×</button>
           </header>
           <div className="ai-chat-log" ref={logRef} aria-live="polite">
@@ -112,7 +115,8 @@ export default function AiShopAssistant() {
         </section>
       )}
       <button className="ai-assistant-toggle" type="button" onClick={() => setOpen((current) => !current)} aria-expanded={open} aria-label={open ? "AI 상담 닫기" : "AI 상담 열기"}>
-        <span aria-hidden="true">✦</span><b>{open ? "CLOSE" : "AI GUIDE"}</b>
+        <span className="ai-toggle-character" aria-hidden="true"><img src="/characters/pocket-guide.webp" alt="" /></span>
+        <span className="ai-toggle-copy"><small>{open ? "POCKET GUIDE" : "무엇을 도와드릴까요?"}</small><b>{open ? "CLOSE" : "AI GUIDE"}</b></span>
       </button>
     </aside>
   );

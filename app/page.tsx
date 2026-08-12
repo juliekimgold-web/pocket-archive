@@ -165,7 +165,7 @@ const seedReviews: Review[] = [
     date: "2026.08.02",
     rating: 5,
     text: "태엽을 감았을 때 나는 작은 소리까지 너무 근사해요. 세월의 흔적이 사진보다 자연스럽고, 포장도 오래된 물건을 존중하는 느낌이라 좋았습니다.",
-    image: "/products/atomic-robot.png",
+    image: "/reviews/atomic-robot-home-review.webp",
     position: "50% 50%",
     helpful: 18,
   },
@@ -176,7 +176,7 @@ const seedReviews: Review[] = [
     date: "2026.07.26",
     rating: 5,
     text: "종이 색과 모서리의 사용감이 정말 예뻐요. 실제 상태를 상세하게 안내해 주셔서 안심하고 구매했습니다. 책상 위에 두니 분위기가 완전히 달라졌어요.",
-    image: "/products/composition-desk-set.png",
+    image: "/reviews/composition-desk-home-review.webp",
     position: "50% 50%",
     helpful: 12,
   },
@@ -187,7 +187,7 @@ const seedReviews: Review[] = [
     date: "2026.07.18",
     rating: 4,
     text: "프린트 색감이 선명하게 남아 있고 작은 스크래치도 미리 본 사진과 같았어요. 지금은 품절이라 더 특별한 물건처럼 느껴집니다.",
-    image: "/products/fawn-glass.png",
+    image: "/reviews/fawn-glass-breakfast-review.webp",
     position: "50% 50%",
     helpful: 9,
   },
@@ -198,7 +198,7 @@ const seedReviews: Review[] = [
     date: "2026.07.11",
     rating: 5,
     text: "표정과 털의 결이 제각각이라 정말 한 점뿐인 친구 같아요. 작은 사이즈라 선반 어디에 두어도 잘 어울립니다.",
-    image: "/products/teddy-pair.png",
+    image: "/reviews/teddy-pair-bedroom-review.webp",
     position: "50% 50%",
     helpful: 21,
   },
@@ -605,7 +605,7 @@ function PhotorealWindowScene({
       const resize = () => {
         const width = Math.max(mount.clientWidth, 1);
         const height = Math.max(mount.clientHeight, 1);
-        if (window.innerWidth <= 760) uniforms.uCrop.value.set(0.18, 0.91, 0.035, 0.82);
+        if (window.innerWidth <= 760) uniforms.uCrop.value.set(0.24, 0.86, 0.0, 0.665);
         else uniforms.uCrop.value.set(0.18, 0.91, 0.11, 0.721);
         camera.aspect = width / height;
         camera.updateProjectionMatrix();
@@ -1122,6 +1122,8 @@ export default function Home() {
   const [reviewImage, setReviewImage] = useState("");
   const [openingDrawer, setOpeningDrawer] = useState<Exclude<Category, "전체"> | null>(null);
   const drawerPointerStart = useRef({ x: 0, y: 0 });
+  const drawerWasOpenOnPointerDown = useRef(false);
+  const drawerPointerWasTouch = useRef(false);
   const drawerNavigationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const selectSceneCategory = useCallback((nextCategory: Exclude<Category, "전체">) => {
@@ -1152,15 +1154,30 @@ export default function Home() {
 
   const startDrawerTap = (event: ReactPointerEvent<HTMLButtonElement>, nextCategory: Exclude<Category, "전체">) => {
     drawerPointerStart.current = { x: event.clientX, y: event.clientY };
+    drawerWasOpenOnPointerDown.current = openingDrawer === nextCategory;
+    drawerPointerWasTouch.current =
+      event.pointerType === "touch" ||
+      window.matchMedia("(hover: none), (pointer: coarse)").matches ||
+      window.innerWidth <= 760;
     event.currentTarget.setPointerCapture(event.pointerId);
-    setOpeningDrawer(nextCategory);
   };
 
   const finishDrawerTap = (event: ReactPointerEvent<HTMLButtonElement>, nextCategory: Exclude<Category, "전체">) => {
     const travel = Math.hypot(event.clientX - drawerPointerStart.current.x, event.clientY - drawerPointerStart.current.y);
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
-    if (travel <= 12) openCategoryDrawer(nextCategory);
-    else setOpeningDrawer(null);
+    if (travel > 12) {
+      setOpeningDrawer(null);
+      return;
+    }
+    if (drawerPointerWasTouch.current) {
+      if (drawerWasOpenOnPointerDown.current) {
+        selectSceneCategory(nextCategory);
+      } else {
+        setOpeningDrawer(nextCategory);
+      }
+      return;
+    }
+    openCategoryDrawer(nextCategory);
   };
 
   const visibleProducts = useMemo(() => {
@@ -1486,14 +1503,16 @@ export default function Home() {
                     className="drawer-front"
                     onPointerDown={(event) => startDrawerTap(event, drawer.category)}
                     onPointerUp={(event) => finishDrawerTap(event, drawer.category)}
-                    onPointerCancel={() => setOpeningDrawer(null)}
+                    onPointerCancel={() => { drawerPointerStart.current = { x: 0, y: 0 }; }}
                     onClick={(event) => { if (event.detail === 0) openCategoryDrawer(drawer.category); }}
-                    aria-label={`${drawer.category} 상품 카테고리 보기`}
+                    aria-label={openingDrawer === drawer.category ? `${drawer.category} 상품 카테고리로 이동` : `${drawer.category} 서랍 열기`}
                   >
                     <span className="drawer-number">{drawer.number}</span>
                     <span className="drawer-title">{drawer.title}<br /><i>{drawer.accent}</i></span>
                     <span className="drawer-handle"><b /></span>
-                    <span className="drawer-command">VIEW CATEGORY</span>
+                    <span className="drawer-command">
+                      {openingDrawer === drawer.category ? "TAP AGAIN · VIEW CATEGORY" : "TAP · OPEN DRAWER"}
+                    </span>
                   </button>
                 </article>
               );
