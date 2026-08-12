@@ -10,6 +10,14 @@ import TossPayment from "./toss-payment";
 
 type Category = "전체" | "토이" | "캐릭터" | "문구" | "리빙" | "빈티지 식기";
 
+const categorySlugs: Record<Exclude<Category, "전체">, string> = {
+  토이: "toys",
+  캐릭터: "characters",
+  문구: "stationery",
+  리빙: "living",
+  "빈티지 식기": "tableware",
+};
+
 type Product = {
   id: number;
   name: string;
@@ -1127,15 +1135,9 @@ export default function Home() {
   const drawerNavigationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const selectSceneCategory = useCallback((nextCategory: Exclude<Category, "전체">) => {
-    const slugs: Record<Exclude<Category, "전체">, string> = {
-      토이: "toys",
-      캐릭터: "characters",
-      문구: "stationery",
-      리빙: "living",
-      "빈티지 식기": "tableware",
-    };
     setCategory(nextCategory);
-    window.history.pushState(null, "", `#new/${slugs[nextCategory]}`);
+    setOpeningDrawer(null);
+    window.history.pushState(null, "", `#new/${categorySlugs[nextCategory]}`);
     requestAnimationFrame(() => document.querySelector("#new")?.scrollIntoView({ behavior: "smooth" }));
   }, []);
 
@@ -1491,14 +1493,22 @@ export default function Home() {
             {drawerCollections.map((drawer, index) => {
               return (
                 <article className={`drawer-unit ${openingDrawer === drawer.category ? "is-open" : ""}`} key={drawer.category} data-reveal data-delay={index * 70}>
-                  <div className="drawer-interior">
+                  <a
+                    className="drawer-interior"
+                    href={`#new/${categorySlugs[drawer.category]}`}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      selectSceneCategory(drawer.category);
+                    }}
+                    aria-label={`${drawer.category} 상품 보기`}
+                  >
                     <img src={drawer.image} alt="" style={{ objectPosition: drawer.position }} />
                     <div>
                       <span>INSIDE DRAWER {drawer.number}</span>
                       <strong>{drawer.description}</strong>
-                      <button onClick={() => selectSceneCategory(drawer.category)}>{drawer.category} 보기 →</button>
+                      <span className="drawer-interior-link">{drawer.category} 상품 보기 →</span>
                     </div>
-                  </div>
+                  </a>
                   <button
                     className="drawer-front"
                     onPointerDown={(event) => startDrawerTap(event, drawer.category)}
