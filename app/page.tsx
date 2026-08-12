@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { FormEvent } from "react";
+import type { FormEvent, PointerEvent as ReactPointerEvent } from "react";
 import AuthAccountButton from "./auth-account-button";
 import KakaoAddressSearch, { type DeliveryAddress } from "./kakao-address-search";
 import { getSupabaseBrowserClient } from "./supabase-client";
@@ -1119,6 +1119,9 @@ export default function Home() {
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewText, setReviewText] = useState("");
   const [reviewImage, setReviewImage] = useState("");
+  const [openingDrawer, setOpeningDrawer] = useState<Exclude<Category, "전체"> | null>(null);
+  const drawerPointerStart = useRef({ x: 0, y: 0 });
+  const drawerNavigationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const selectSceneCategory = useCallback((nextCategory: Exclude<Category, "전체">) => {
     const slugs: Record<Exclude<Category, "전체">, string> = {
@@ -1132,6 +1135,32 @@ export default function Home() {
     window.history.pushState(null, "", `#new/${slugs[nextCategory]}`);
     requestAnimationFrame(() => document.querySelector("#new")?.scrollIntoView({ behavior: "smooth" }));
   }, []);
+
+  useEffect(() => () => {
+    if (drawerNavigationTimer.current) clearTimeout(drawerNavigationTimer.current);
+  }, []);
+
+  const openCategoryDrawer = useCallback((nextCategory: Exclude<Category, "전체">) => {
+    setOpeningDrawer(nextCategory);
+    if (drawerNavigationTimer.current) clearTimeout(drawerNavigationTimer.current);
+    drawerNavigationTimer.current = setTimeout(() => {
+      selectSceneCategory(nextCategory);
+      setOpeningDrawer(null);
+    }, 220);
+  }, [selectSceneCategory]);
+
+  const startDrawerTap = (event: ReactPointerEvent<HTMLButtonElement>, nextCategory: Exclude<Category, "전체">) => {
+    drawerPointerStart.current = { x: event.clientX, y: event.clientY };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setOpeningDrawer(nextCategory);
+  };
+
+  const finishDrawerTap = (event: ReactPointerEvent<HTMLButtonElement>, nextCategory: Exclude<Category, "전체">) => {
+    const travel = Math.hypot(event.clientX - drawerPointerStart.current.x, event.clientY - drawerPointerStart.current.y);
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    if (travel <= 12) openCategoryDrawer(nextCategory);
+    else setOpeningDrawer(null);
+  };
 
   const visibleProducts = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -1443,7 +1472,7 @@ export default function Home() {
           <div className="drawer-cabinet">
             {drawerCollections.map((drawer, index) => {
               return (
-                <article className="drawer-unit" key={drawer.category} data-reveal data-delay={index * 70}>
+                <article className={`drawer-unit ${openingDrawer === drawer.category ? "is-open" : ""}`} key={drawer.category} data-reveal data-delay={index * 70}>
                   <div className="drawer-interior">
                     <img src={drawer.image} alt="" style={{ objectPosition: drawer.position }} />
                     <div>
@@ -1454,7 +1483,10 @@ export default function Home() {
                   </div>
                   <button
                     className="drawer-front"
-                    onClick={() => selectSceneCategory(drawer.category)}
+                    onPointerDown={(event) => startDrawerTap(event, drawer.category)}
+                    onPointerUp={(event) => finishDrawerTap(event, drawer.category)}
+                    onPointerCancel={() => setOpeningDrawer(null)}
+                    onClick={(event) => { if (event.detail === 0) openCategoryDrawer(drawer.category); }}
                     aria-label={`${drawer.category} 상품 카테고리 보기`}
                   >
                     <span className="drawer-number">{drawer.number}</span>
