@@ -25,6 +25,8 @@ export default defineConfig(({ mode }) => {
       "process.env.NEXT_PUBLIC_SUPABASE_URL": JSON.stringify(env.NEXT_PUBLIC_SUPABASE_URL),
       "process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY),
       "process.env.NEXT_PUBLIC_KAKAO_MAP_JAVASCRIPT_KEY": JSON.stringify(env.NEXT_PUBLIC_KAKAO_MAP_JAVASCRIPT_KEY),
+      "process.env.NEXT_PUBLIC_TOSS_WIDGET_CLIENT_KEY": JSON.stringify(env.NEXT_PUBLIC_TOSS_WIDGET_CLIENT_KEY),
+      "process.env.NEXT_PUBLIC_TOSS_PAYMENT_API_URL": JSON.stringify(env.NEXT_PUBLIC_TOSS_PAYMENT_API_URL),
     },
     build: {
       outDir: resolve(process.cwd(), "pages-dist"),
@@ -33,6 +35,8 @@ export default defineConfig(({ mode }) => {
         input: {
           main: resolve(process.cwd(), "pages", "index.html"),
           mypage: resolve(process.cwd(), "pages", "mypage", "index.html"),
+          paymentSuccess: resolve(process.cwd(), "pages", "payment", "success", "index.html"),
+          paymentFail: resolve(process.cwd(), "pages", "payment", "fail", "index.html"),
         },
       },
     },

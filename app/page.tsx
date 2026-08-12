@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import AuthAccountButton from "./auth-account-button";
 import KakaoAddressSearch, { type DeliveryAddress } from "./kakao-address-search";
+import TossPayment from "./toss-payment";
 
 type Category = "전체" | "토이" | "캐릭터" | "문구" | "리빙" | "빈티지 식기";
 
@@ -1459,7 +1460,14 @@ export default function Home() {
                 </address>
                 {deliveryMemo && <small>배송 메모 · {deliveryMemo}</small>}
                 <div><span>주문 금액</span><b>₩{money.format(cartTotal)}</b></div>
-                <button type="button" className="checkout" onClick={() => setOrderReady(false)}>배송지 수정하기</button>
+                <TossPayment
+                  amount={cartTotal}
+                  items={cartProducts.map(({ name, price }) => ({ name, price }))}
+                  recipient={recipient}
+                  phone={phone}
+                  address={`[${deliveryAddress.zonecode}] ${deliveryAddress.address} ${deliveryAddress.extra} ${deliveryAddress.detail}`.trim()}
+                />
+                <button type="button" className="checkout checkout-secondary" onClick={() => setOrderReady(false)}>배송지 수정하기</button>
               </div>
             ) : (
               <>
