@@ -1357,8 +1357,9 @@ export default function Home() {
         <section className="reviews-section" id="reviews">
           <div className="reviews-head" data-reveal>
             <div>
-              <span className="eyebrow green">CUSTOMER REVIEWS</span>
-              <h2>고객들의<br /><i>솔직한 구매 후기</i></h2>
+              <span className="eyebrow green">PURCHASE REVIEWS</span>
+              <h2>구매 후기</h2>
+              <p className="reviews-intro">포켓 아카이브의 물건을 먼저 받아본 분들의 이야기입니다.</p>
             </div>
             <div className="review-score" aria-label="구매 후기 평균 별점 4.9점">
               <strong>4.9</strong>

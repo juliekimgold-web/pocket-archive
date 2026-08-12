@@ -218,8 +218,8 @@ img { display: block; max-width: 100%; }
 
 .reviews-section { padding: 112px 5vw 125px; background: #eee4d2; }
 .reviews-head { max-width: 1440px; margin: 0 auto 48px; display: flex; align-items: flex-end; justify-content: space-between; gap: 45px; }
-.reviews-head h2 { margin: 0; font-family: var(--font-serif-ko); font-size: clamp(42px, 5.5vw, 70px); font-weight: 420; line-height: 1.04; letter-spacing: -.04em; }
-.reviews-head h2 i { color: var(--brick); font-weight: 400; }
+.reviews-head h2 { margin: 0; font-family: var(--font-sans); font-size: clamp(42px, 5.2vw, 66px); font-style: normal; font-weight: 700; line-height: 1.05; letter-spacing: -.055em; }
+.reviews-intro { max-width: 480px; margin: 14px 0 0; color: #786b60; font-size: 11px; line-height: 1.75; }
 .review-score { min-width: 250px; display: flex; align-items: center; gap: 18px; padding: 22px 0 7px 24px; border-left: 1px solid var(--line); }
 .review-score > strong { font-family: var(--font-display); font-size: 58px; font-weight: 430; line-height: 1; }
 .review-score div { display: flex; flex-direction: column; gap: 7px; }
