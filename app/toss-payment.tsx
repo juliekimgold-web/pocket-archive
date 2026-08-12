@@ -43,23 +43,45 @@ export default function TossPayment({ amount, items, recipient, phone, address }
     let paymentMethods: { destroy: () => Promise<void> } | undefined;
     let agreement: { destroy: () => Promise<void> } | undefined;
 
+    const stopRendering = async () => {
+      await Promise.allSettled([paymentMethods?.destroy(), agreement?.destroy()].filter(Boolean) as Promise<void>[]);
+      paymentMethods = undefined;
+      agreement = undefined;
+    };
+
     async function renderWidgets() {
       try {
         setReady(false);
         setError("");
         const { ANONYMOUS, loadTossPayments } = await import("@tosspayments/tosspayments-sdk");
+        if (!active) return;
         const tossPayments = await loadTossPayments(TOSS_TEST_CLIENT_KEY);
+        if (!active) return;
         const widgets = tossPayments.widgets({ customerKey: ANONYMOUS });
         widgetsRef.current = widgets as TossWidgets;
         await widgets.setAmount({ currency: "KRW", value: amount });
-        [paymentMethods, agreement] = await Promise.all([
-          widgets.renderPaymentMethods({ selector: "#toss-payment-methods", variantKey: "DEFAULT" }),
-          widgets.renderAgreement({ selector: "#toss-payment-agreement", variantKey: "AGREEMENT" }),
-        ]);
+        if (!active) return;
+
+        paymentMethods = await widgets.renderPaymentMethods({ selector: "#toss-payment-methods", variantKey: "DEFAULT" });
+        if (!active) {
+          await stopRendering();
+          return;
+        }
+
+        agreement = await widgets.renderAgreement({ selector: "#toss-payment-agreement", variantKey: "AGREEMENT" });
+        if (!active) {
+          await stopRendering();
+          return;
+        }
         if (active) setReady(true);
       } catch (caught) {
         console.error(caught);
-        if (active) setError("테스트 결제 UI를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
+        await stopRendering();
+        if (active) {
+          widgetsRef.current = null;
+          setReady(false);
+          setError("테스트 결제 UI를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
+        }
       }
     }
 
@@ -67,8 +89,7 @@ export default function TossPayment({ amount, items, recipient, phone, address }
     return () => {
       active = false;
       widgetsRef.current = null;
-      void paymentMethods?.destroy();
-      void agreement?.destroy();
+      void stopRendering();
     };
   }, [amount]);
 
