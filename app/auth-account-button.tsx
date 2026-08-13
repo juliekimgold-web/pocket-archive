@@ -114,6 +114,7 @@ export default function AuthAccountButton() {
               <span className="account-kicker">SIGNED IN WITH GOOGLE</span>
               <strong>{userLabel(user)}</strong>
               <small>{user.email}</small>
+              {user.app_metadata?.role === "admin" && <a className="account-page-link" href="/admin/">상점 운영실 열기 →</a>}
               <a className="account-page-link" href="/mypage">마이페이지 열기 →</a>
               <button type="button" onClick={signOut} disabled={busy}>{busy ? "로그아웃 중" : "로그아웃"}</button>
             </>

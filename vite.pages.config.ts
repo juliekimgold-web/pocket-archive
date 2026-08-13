@@ -36,6 +36,7 @@ export default defineConfig(({ mode }) => {
           main: resolve(process.cwd(), "pages", "index.html"),
           mypage: resolve(process.cwd(), "pages", "mypage", "index.html"),
           journal: resolve(process.cwd(), "pages", "journal", "index.html"),
+          admin: resolve(process.cwd(), "pages", "admin", "index.html"),
           paymentSuccess: resolve(process.cwd(), "pages", "payment", "success", "index.html"),
           paymentFail: resolve(process.cwd(), "pages", "payment", "fail", "index.html"),
         },
